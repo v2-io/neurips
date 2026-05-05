@@ -9,12 +9,24 @@
 #   [manifest-stem]  defaults to "test" (reads OUT.test.md). Reads OUT.<stem>.md.
 #
 # Phase A scope: read meta.md (YAML frontmatter + abstract), parse the OUT.*.md
-# assembly manifest, render each segment via a kramdown→LaTeX converter that
+# assembly manifest, render each segment via a kramdown→LaTeX pipeline that
 # routes Obsidian callouts (> [!theorem] / [!lemma] / etc.) to amsthm
 # environments, [[#^anchor]] cross-refs to \Cref{anchor}, [!table] callouts to
 # \begin{table}+caption+label+tabular, [!note]/[!todo]/[!info]/[!warning]/[!tip]
 # to nothing (stripped). Splice into common/neurips_2026.tex template, run
 # lualatex twice, output to <paper-dir>/out/<stem>.pdf.
+#
+# Architecture:
+#   * Kramdown::Parser::NeurIPS — parser-level extension. Recognizes the
+#     Obsidian callout pattern (`> [!type] title ^anchor`) at tokenize time
+#     and stores type / title / anchor as attributes on the resulting
+#     blockquote element. Same trick for header-trailing `^anchor`. Adds a
+#     single-dollar inline-math span parser ($x$) since upstream kramdown
+#     only recognizes $$...$$. Marker extraction runs as a *block* parser
+#     (before any span parsing), so titles can contain $math$ without
+#     fragmenting the marker into text-node soup.
+#   * Kramdown::Converter::NeurIPS — converter consumes the pre-extracted
+#     attributes (no regex digging through text nodes) and emits LaTeX.
 #
 # Raw TeX passes through unmodified — backslash sequences, environments, and
 # braces are author-intentional LaTeX. Only %, &, _, #, ~, ^ are escaped (these
@@ -25,6 +37,7 @@
 # (deferred until Phase B).
 
 require "kramdown"
+require "kramdown/parser/kramdown"
 require "yaml"
 require "fileutils"
 require "open3"
@@ -34,10 +47,99 @@ COMMON_DIR = ROOT / "common"
 TEMPLATE   = COMMON_DIR / "neurips_2026.tex"
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Custom kramdown parser — extracts callout markers and header anchors at
+# parse time so they reach the converter as element attributes (rather than
+# fragments of text-node soup that span parsing could shred).
+# ─────────────────────────────────────────────────────────────────────────────
+
+class Kramdown::Parser::NeurIPS < Kramdown::Parser::Kramdown
+  # An Obsidian-style callout is a blockquote whose first non-whitespace
+  # content is `[!type]` (optionally followed by `+` or `-` for fold state).
+  # We claim those before the standard :blockquote parser sees them.
+  CALLOUT_START   = /^#{OPT_SPACE}>[ \t]*\[!(?<type>\w+)\][+-]?/
+  MARKER_LINE     = /\A\[!(?<type>\w+)\][+-]?[ \t]*(?<rest>.*?)\s*(?:\n|\z)/m
+  MARKER_REST     = /\A(?<title>.*?)(?:\s+\^(?<anchor>[\w-]+))?\s*\z/
+  HEADER_ANCHOR   = /\A(?<text>.*?)\s+\^(?<anchor>[\w-]+)\s*\z/
+
+  # Single-dollar inline math. Upstream kramdown only recognizes $$...$$, so
+  # plain `$x$` would otherwise leak through unparsed. The lookarounds keep
+  # us out of $$...$$'s lane (handled by upstream :inline_math).
+  SINGLE_DOLLAR_MATH = /(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/
+
+  def initialize(source, options)
+    super
+    unless @block_parsers.include?(:callout)
+      bq_idx = @block_parsers.index(:blockquote) || 0
+      @block_parsers.insert(bq_idx, :callout)
+    end
+    @span_parsers.unshift(:single_dollar_math) unless @span_parsers.include?(:single_dollar_math)
+  end
+
+  def parse_single_dollar_math
+    line     = @src.current_line_number
+    @src.pos += @src.matched_size
+    @tree.children << Element.new(:math, @src[1].strip, nil, category: :span, location: line)
+  end
+  define_parser(:single_dollar_math, SINGLE_DOLLAR_MATH, "\\$")
+
+  # Slurp the contiguous `> ...` lines (same algorithm as parse_blockquote),
+  # then peel off the marker line, attach (type / title / anchor) to the
+  # blockquote element as attributes, and recurse on the remainder.
+  #
+  # rubocop:disable Naming/PredicateMethod -- kramdown's parse_* protocol
+  # returns true/false to signal "claimed the input" vs "passed"; matching
+  # that contract is more important than the boolean-method naming convention.
+  def parse_callout
+    start_line = @src.current_line_number
+    raw        = @src.scan(self.class::PARAGRAPH_MATCH)
+    raw << @src.scan(self.class::PARAGRAPH_MATCH) until @src.match?(self.class::LAZY_END)
+    raw.gsub!(self.class::BLOCKQUOTE_START, "")
+
+    marker = raw.match(MARKER_LINE)
+    return false unless marker
+
+    type     = marker[:type].downcase
+    title    = nil
+    anchor   = nil
+    if (rest = marker[:rest]) && !rest.empty? && (rm = rest.match(MARKER_REST))
+      title  = rm[:title].to_s.strip
+      title  = nil if title.empty?
+      anchor = rm[:anchor]
+    end
+    body = raw[marker[0].length..]
+
+    el = new_block_el(:blockquote, nil, nil, location: start_line)
+    el.attr["data-callout-type"]   = type
+    el.attr["data-callout-title"]  = title  if title
+    el.attr["data-callout-anchor"] = anchor if anchor
+    @tree.children << el
+    parse_blocks(el, body)
+    true
+  end
+  # rubocop:enable Naming/PredicateMethod
+  define_parser(:callout, CALLOUT_START)
+
+  # Headers may carry a trailing `^anchor` (Obsidian block-reference syntax).
+  # Override add_header to peel that off before the text becomes a child node;
+  # we expose it as the data-header-anchor attribute for the converter.
+  def add_header(level, text, id)
+    anchor = nil
+    if (m  = text.match(HEADER_ANCHOR))
+      text   = m[:text]
+      anchor = m[:anchor]
+    end
+    super
+    return unless anchor
+
+    @tree.children.last.attr["data-header-anchor"] = anchor
+  end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Custom kramdown→LaTeX converter
 # ─────────────────────────────────────────────────────────────────────────────
 
-class Kramdown::Converter::Neurips < Kramdown::Converter::Latex
+class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
   # Characters we still escape in body text. We deliberately exclude
   # backslash, braces, and dollar — those are author-intentional LaTeX
   # (raw-TeX passthrough policy). The included characters are LaTeX-special
@@ -50,6 +152,7 @@ class Kramdown::Converter::Neurips < Kramdown::Converter::Latex
     "~" => "\\textasciitilde{}",
     "^" => "\\textasciicircum{}"
   }.freeze
+  ESCAPE_RE = /[%&_#~^]/
 
   # Obsidian-callout types that map to amsthm-style numbered environments.
   # All share a single counter via amsthm's optional-counter mechanism.
@@ -65,47 +168,41 @@ class Kramdown::Converter::Neurips < Kramdown::Converter::Latex
   # Cross-reference pattern (Obsidian wikilink for block references).
   CREF_PATTERN = /\[\[#\^([\w-]+)\]\]/
 
-  # Header-anchor pattern: trailing " ^slug" on a heading title becomes
-  # the section's \label.
-  HEADER_ANCHOR_PATTERN = /\s+\^([\w-]+)\s*\z/
+  # Trailing ` {-}` after a heading marks it unnumbered (Pandoc-style).
+  HEADER_UNNUMBERED = /\s*\{-\}\s*\z/
 
   # ── Escape policy ────────────────────────────────────────────────────────
 
-  # Override the inherited escape — passthrough \, {, }; cross-refs handled
-  # at the text level before escaping.
-  def escape(str) = str.gsub(CREF_PATTERN) { "\\Cref{#{Regexp.last_match(1)}}" }.gsub(/[%&_#~^]/, ESCAPE_MAP)
+  # Override the inherited escape — passthrough \, {, }, $; resolve cross-refs
+  # at the text level before the special-character escape pass.
+  def escape(str) = str.gsub(CREF_PATTERN) { "\\Cref{#{Regexp.last_match(1)}}" }.gsub(ESCAPE_RE, ESCAPE_MAP)
 
   # ── Element converters ───────────────────────────────────────────────────
 
   def convert_header(el, opts)
-    title  = inner(el, opts)
-    anchor = nil
-    if (m  = title.match(HEADER_ANCHOR_PATTERN))
-      anchor = m[1]
-      title  = title.sub(HEADER_ANCHOR_PATTERN, "")
+    raw_title = inner(el, opts)
+    starred   = false
+    if raw_title.match?(HEADER_UNNUMBERED)
+      raw_title = raw_title.sub(HEADER_UNNUMBERED, "")
+      starred   = true
     end
-    cmd = case el.options[:level]
-          when 1 then "section"
-          when 2 then "section"
-          when 3 then "subsection"
-          when 4 then "subsubsection"
-          else "paragraph"
-          end
-    # The "References" segment uses {-} class to mark unnumbered (\section*)
-    starred = el.attr["class"]&.include?("unnumbered")
-    result  = "\\#{cmd}#{'*' if starred}{#{title}}\n"
+    cmd     = header_command(el.options[:level])
+    anchor  = el.attr["data-header-anchor"]
+    result  = "\\#{cmd}#{'*' if starred}{#{raw_title.strip}}\n"
     result << "\\label{#{anchor}}\n" if anchor && !starred
     result << "\n"
     result
   end
 
   def convert_blockquote(el, opts)
-    marker = extract_callout_marker(el)
-    return super unless marker
-
-    type = marker[:type]
+    type = el.attr["data-callout-type"]
+    return super unless type
     return "" if STRIP_LIKE.include?(type)
 
+    marker = {
+      title:  escape_title(el.attr["data-callout-title"]),
+      anchor: el.attr["data-callout-anchor"]
+    }
     body = inner(el, opts).strip
 
     case type
@@ -124,24 +221,18 @@ class Kramdown::Converter::Neurips < Kramdown::Converter::Latex
   # We always emit just the tabular; the [!table] callout supplies the
   # \begin{table}\caption\label{}\centering wrapper.
   def convert_table(el, opts)
-    alignments = el.options[:alignment].map do |a|
-      case a
-      when :left   then "l"
-      when :right  then "r"
-      when :center then "c"
-      else "l"
-      end
-    end
-    result = "\\begin{tabular}{#{alignments.join}}\n"
-    result << "\\toprule\n"
-    result << inner(el, opts)
-    result << "\\bottomrule\n"
-    result << "\\end{tabular}\n"
-    result
+    alignments = el.options[:alignment].map { |a| ALIGN_MAP[a] || "l" }
+    out        = "\\begin{tabular}{#{alignments.join}}\n"
+    out << "\\toprule\n"
+    out << inner(el, opts)
+    out << "\\bottomrule\n"
+    out << "\\end{tabular}\n"
+    out
   end
 
-  def convert_thead(el, opts) = "#{inner(el, opts)}\\midrule\n"
+  ALIGN_MAP = { left: "l", right: "r", center: "c", default: "l" }.freeze
 
+  def convert_thead(el, opts) = "#{inner(el, opts)}\\midrule\n"
   def convert_tbody(el, opts) = inner(el, opts)
   def convert_tfoot(el, opts) = inner(el, opts)
 
@@ -156,78 +247,71 @@ class Kramdown::Converter::Neurips < Kramdown::Converter::Latex
 
   private
 
-  def extract_callout_marker(blockquote_el)
-    first_block = blockquote_el.children.first
-    return nil unless first_block&.type == :p
+  # Title strings (callout titles, header text) live outside the kramdown
+  # span-parsed AST, so Cref substitution and special-character escaping
+  # need explicit application here. Math regions ($...$ and $$...$$) are
+  # passed through verbatim — `^` and `_` are operators there, not text.
+  def escape_title(str)
+    return nil if str.nil?
 
-    first_text = first_block.children.first
-    return nil unless first_text&.type == :text
-
-    text = first_text.value
-    m    = text.match(/\A\[!(\w+)\]\+?-?(?:[ \t]+(.*?))?\s*(?:\n|\z)/m)
-    return nil unless m
-
-    type                           = m[1].downcase
-    rest                           = m[2]
-    title                          = nil
-    anchor                         = nil
-    if rest && !rest.empty? && (am = rest.match(/\A(.*?)(?:\s+\^([\w-]+))?\s*\z/))
-      title  = am[1].strip
-      title  = nil if title.empty?
-      anchor = am[2]
+    out   = +""
+    parts = str.split(/(\$\$[^$]*\$\$|\$[^$\n]+?\$)/)
+    parts.each do |part|
+      out << if part.start_with?("$")
+               part
+             else
+               part.gsub(CREF_PATTERN) { "\\Cref{#{Regexp.last_match(1)}}" }.gsub(ESCAPE_RE, ESCAPE_MAP)
+             end
     end
+    out
+  end
 
-    # Mutate the AST: strip the marker line from the first text node so the
-    # body renders without it. If the marker consumed the entire first
-    # paragraph, drop the paragraph entirely.
-    remainder = text.sub(/\A\[!\w+\]\+?-?[^\n]*\n?/, "")
-    if remainder.empty?
-      first_block.children.shift
-      blockquote_el.children.shift if first_block.children.empty?
-    else
-      first_text.value = remainder
+  def header_command(level)
+    case level
+    when 1, 2 then "section"
+    when 3    then "subsection"
+    when 4    then "subsubsection"
+    else           "paragraph"
     end
-
-    { type: type, title: title, anchor: anchor }
   end
 
   def render_theorem_like(env, marker, body)
-    result = "\\begin{#{env}}"
-    result << "[#{marker[:title]}]" if marker[:title]
-    result << "\n"
-    result << "\\label{#{marker[:anchor]}}\n" if marker[:anchor]
-    result << body
-    result << "\n\\end{#{env}}\n\n"
-    result
+    out  = "\\begin{#{env}}"
+    out << "[#{marker[:title]}]" if marker[:title]
+    out << "\n"
+    out << "\\label{#{marker[:anchor]}}\n" if marker[:anchor]
+    out << body
+    out << "\n\\end{#{env}}\n\n"
+    out
   end
 
   def render_proof(marker, body)
-    result = +"\\begin{proof}"
-    result << "[#{marker[:title]}]" if marker[:title]
-    result << "\n"
-    result << body
-    result << "\n\\end{proof}\n\n"
-    result
+    out  = +"\\begin{proof}"
+    out << "[#{marker[:title]}]" if marker[:title]
+    out << "\n"
+    out << body
+    out << "\n\\end{proof}\n\n"
+    out
   end
 
   def render_table_callout(marker, body)
-    result = +"\\begin{table}[h]\n"
-    result << "  \\centering\n"
-    result << "  \\caption{#{marker[:title]}}\n" if marker[:title]
-    result << "  \\label{#{marker[:anchor]}}\n"  if marker[:anchor]
-    result << body
-    result << "\n\\end{table}\n\n"
-    result
+    out  = +"\\begin{table}[h]\n"
+    out << "  \\centering\n"
+    out << "  \\caption{#{marker[:title]}}\n" if marker[:title]
+    out << "  \\label{#{marker[:anchor]}}\n"  if marker[:anchor]
+    out << body
+    out << "\n\\end{table}\n\n"
+    out
   end
 
   def render_figure_callout(marker, body)
-    result = +"\\begin{figure}[h]\n"
-    result << "  \\centering\n"
-    result << body
-    result << "\n  \\caption{#{marker[:title]}}\n" if marker[:title]
-    result << "  \\label{#{marker[:anchor]}}\n" if marker[:anchor]
-    result << "\\end{figure}\n\n"
-    result
+    out  = +"\\begin{figure}[h]\n"
+    out << "  \\centering\n"
+    out << body
+    out << "\n  \\caption{#{marker[:title]}}\n" if marker[:title]
+    out << "  \\label{#{marker[:anchor]}}\n"    if marker[:anchor]
+    out << "\\end{figure}\n\n"
+    out
   end
 end
 
@@ -259,7 +343,7 @@ class Manifest
       case state
       when :outside       then state = :header
       when :header        then state = (separator?(cells) ? :data : :outside)
-      when :data then rows << build_row(cells)
+      when :data          then rows << build_row(cells)
       end
     end
     rows.compact
@@ -274,8 +358,8 @@ class Manifest
   def separator?(cells) = cells.all? { |c| c.match?(/\A:?-+:?\z/) }
 
   def build_row(cells)
-    section = cells[0]
-    type    = cells[1]&.downcase
+    section    = cells[0]
+    type       = cells[1]&.downcase
     slug, path = extract_link(cells[2])
     return nil unless slug
 
@@ -382,8 +466,8 @@ class Builder
   private
 
   def assemble_body(manifest)
-    body            = +""
-    appendix_set    = false
+    body         = +""
+    appendix_set = false
 
     manifest.rows.each do |row|
       if row.type == "appendix" && !appendix_set
@@ -404,8 +488,7 @@ class Builder
     if src_path.extname == ".tex"
       "#{content}\n"
     else
-      content = preprocess_inline_math(content)
-      doc = Kramdown::Document.new(content, input: "kramdown")
+      doc           = Kramdown::Document.new(content, input: "NeurIPS")
       out, warnings = doc.to_neurips
       warnings.each { |w| @lint_findings << "#{row.path}: #{w}" }
       out
@@ -416,23 +499,26 @@ class Builder
     template = TEMPLATE.read
 
     # Replace title
-    template = template.sub(/\\title\{[^}]*\}/, "\\title{#{meta.title}}")
+    template = template.sub(/\\title\{[^}]*\}/) { "\\title{#{meta.title}}" }
 
     # Replace author block (multi-line; from \author{ to its closing })
-    template = template.sub(/\\author\{.*?\n\}\n/m, "#{render_author_block(meta)}\n")
+    template = template.sub(/\\author\{.*?\n\}\n/m) { "#{render_author_block(meta)}\n" }
 
     # Replace abstract
-    template = template.sub(/\\begin\{abstract\}.*?\\end\{abstract\}/m,
-                            "\\begin{abstract}\n#{meta.abstract}\n\\end{abstract}")
+    template = template.sub(/\\begin\{abstract\}.*?\\end\{abstract\}/m) do
+      "\\begin{abstract}\n#{meta.abstract}\n\\end{abstract}"
+    end
 
     # Inject preamble additions (theorem envs + cleveref) right before \begin{document}
-    template = template.sub("\\begin{document}", "#{PREAMBLE_ADDITIONS}\n\\begin{document}")
+    template = template.sub("\\begin{document}") { "#{PREAMBLE_ADDITIONS}\n\\begin{document}" }
 
-    # Replace body: from after \begin{abstract}...\end{abstract} to \end{document}
-    template.sub(
-      /(\\end\{abstract\}\n).*?(\\end\{document\})/m,
-      "\\1\n#{body_tex}\n\\2"
-    )
+    # Replace body: from after \begin{abstract}...\end{abstract} to \end{document}.
+    # Block form is mandatory — body_tex contains literal backslashes (\\, \&,
+    # \emph{...}) that String#sub's replacement-string interpretation would
+    # otherwise consume as backreferences/escapes.
+    template.sub(/(\\end\{abstract\}\n).*?(\\end\{document\})/m) do
+      "#{Regexp.last_match(1)}\n#{body_tex}\n#{Regexp.last_match(2)}"
+    end
   end
 
   def render_author_block(meta)
@@ -445,14 +531,6 @@ class Builder
     end
     lines << "}"
     lines.join("\n")
-  end
-
-  # Kramdown's parser only recognizes $$...$$ as math (both inline and display),
-  # not single-dollar $...$. Academic authors write inline math as $...$, so we
-  # promote single-dollar pairs to double-dollar before parsing. The lookarounds
-  # avoid touching content already in $$...$$ form.
-  def preprocess_inline_math(content)
-    content.gsub(/(?<!\$)\$([^$\n]+?)\$(?!\$)/) { "$$#{Regexp.last_match(1)}$$" }
   end
 
   def compile_pdf(tex_path)
@@ -485,7 +563,7 @@ end
 # generation expects the converter to be registered via `convert(method_name)`).
 class Kramdown::Document
   def to_neurips
-    output = Kramdown::Converter::Neurips.convert(@root, @options)
+    output = Kramdown::Converter::NeurIPS.convert(@root, @options)
     output.is_a?(Array) ? output : [output, []]
   end
 end

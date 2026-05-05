@@ -1,4 +1,4 @@
-ce## Supplementary
+## Supplementary
 
 ### Discrete-time analog ^supp-discrete
 
