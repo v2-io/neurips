@@ -1,0 +1,3 @@
+[submodule "01-tragedy-confident-agent"]
+	path = 01-tragedy-confident-agent
+	url = git@github.com:v2-io/paper-tragedy-confident-agent.git

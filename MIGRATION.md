@@ -2,7 +2,7 @@
 
 *Notes captured as the three NeurIPS papers move from the monolithic `~/src/neurips2026/` workspace into a parent + submodule layout at `~/src/neurips/`. Goal: do the first paper stepwise with Joseph instructing; capture each decision so paper #2 and #3 become mechanical.*
 
-Source-of-truth restructure plan: `~/src/ops/neurips-restructure.md`.
+Source-of-truth restructure plan: `restructure-plan.md` (alongside this file in the parent repo; moved out of `~/src/ops/` 2026-05-05).
 
 ---
 
@@ -12,23 +12,54 @@ Source-of-truth restructure plan: `~/src/ops/neurips-restructure.md`.
 
 - **2026-05-05 — Parent path:** `~/src/neurips/` (sibling to `~/src/neurips2026/`; old workspace stays in place during migration). Initialized with `main` as the default branch.
 - **2026-05-05 — Parent contents:** thin shell. Just `README.md`, `.gitignore`, `MIGRATION.md` (this file), and the per-paper submodule references. No CLAUDE.md, PRAXES.md, STYLE.md at this level yet — those decisions happen after we see how much per-paper duplication appears in practice.
-- **2026-05-05 — Per-paper submodule layout:** TBD (waiting on Joseph; see "Open questions" below).
+- **2026-05-05 — Per-paper canonical-repo location:** GitHub. Joseph created `git@github.com:v2-io/paper-tragedy-confident-agent.git` and the bootstrap pattern is: temporary working dir at `~/src/paper-{slug}/` → init + initial commit + push to GitHub origin → submodule-add from parent via SSH URL. The temporary `~/src/paper-{slug}/` working dir is staging, not canonical; cleanup TBD per paper (Joseph's "for a moment" framing implies removal once submoduled, but waiting on confirmation).
+
+- **2026-05-05 — Repo / submodule naming:** *hybrid numbered + multi-word slug*. GitHub repo names are `paper-{multi-word-slug}` (venue-neutral; outlives any single submission). Parent-repo submodule paths are `0N-{multi-word-slug}/` (numbered prefix matches agentic-systems convention; multi-word slug matches GitHub repo name modulo the `paper-` prefix). For paper #1: GitHub repo `paper-tragedy-confident-agent`, submodule path `01-tragedy-confident-agent/`. For papers #2 and #3: TBD pending Joseph picking the multi-word slugs (current single-word slugs are `convergence` and `hallucinate`; expected multi-word forms might be `convergence-nonstationary-rl` and `hallucinate-coupling-ambiguity` or similar — Joseph picks).
+
+- **2026-05-05 — README content in per-paper repo:** ~3 lines: paper title, one-paragraph technical summary, mention of the segmented-paper workflow + concat-manifest pattern. Venue-neutral phrasing (the repo will outlive NeurIPS 2026; will also feed camera-ready, journal versions, possibly other venues).
 
 ## Open questions
 
-- **Per-paper canonical-repo location.** The parent will reference each paper as a submodule. Where does the canonical per-paper repo physically live, given we don't have GitHub remotes yet?
-  - **Option A — Sibling working repo:** `~/src/paper-tragedy/` (or `~/src/neurips-tragedy/`), parent submodules it via relative path `../paper-tragedy`. Two on-disk checkouts of the same repo (the canonical + the parent's submodule clone). Standard pattern; trivial to migrate to GitHub URL later via `git submodule set-url`.
-  - **Option B — Local bare canonical:** `~/src/_neurips-bare/tragedy.git`, parent submodules it. One working checkout (in parent); bare repo is the canonical. Slightly less discoverable; cleaner single-checkout workflow.
-  - **Option C — Init nested, formalize later:** `git init` directly inside `~/src/neurips/01-tragedy/`, parent `.gitignore`s it for now. Convert to formal submodule once a GitHub URL exists. One checkout; not technically a submodule until later.
-  - *Default if no input:* Option A with `~/src/paper-tragedy/` naming. Standard, forward-compatible with GitHub.
+- **Cleanup of the temporary `~/src/paper-{slug}/` working dir.** Once the submodule is wired, the parent's submodule checkout (`~/src/neurips/0N-{slug}/`) is a fully working clone with its own `.git` link — Joseph can edit, commit, push from there directly. The temporary `~/src/paper-{slug}/` is no longer needed for the workflow. *Default if no input:* delete after submodule wiring confirmed working. Asking before doing it.
 
-- **First paper:** assumed to be `01-tragedy/` (B-N4 — *Tragedy of the Confident Agent*). Confirm.
+## Reusable migration recipe — **structural shell** (paper #1 → #2/#3 mechanical)
 
-- **Submodule path-name inside parent:** `01-tragedy/` (matching the existing `~/src/neurips2026/01-tragedy/` slug). Numbered prefix follows the agentic-systems convention.
+*Bootstrap of an empty per-paper repo, GitHub-backed, wired as a submodule of the parent. Refines as we discover steps.*
 
-## Reusable migration recipe
+```bash
+# Variables (per paper)
+SLUG=tragedy-confident-agent          # multi-word slug; matches GitHub repo (modulo "paper-" prefix)
+NUM=01                                 # zero-padded ordering inside parent
 
-*(Will be filled in once paper #1 is done. The intent is that paper #2 and #3 reduce to running the recipe.)*
+# 1. Create the GitHub repo (manual, once per paper).
+#    Joseph creates `v2-io/paper-${SLUG}` on GitHub with no auto-init.
+
+# 2. Bootstrap a working repo in temporary staging location.
+mkdir ~/src/paper-${SLUG}
+cd    ~/src/paper-${SLUG}
+# Write README.md (paper title + one-paragraph summary + workflow note); see paper #1 for the template.
+git init -b main
+git add README.md
+git commit -m "Initial commit"
+git remote add origin git@github.com:v2-io/paper-${SLUG}.git
+git push -u origin main
+
+# 3. Wire as submodule in the parent umbrella repo.
+cd ~/src/neurips
+git submodule add git@github.com:v2-io/paper-${SLUG}.git ${NUM}-${SLUG}
+git commit -- .gitmodules ${NUM}-${SLUG} -m "Add ${NUM}-${SLUG} submodule"
+
+# 4. Cleanup (pending confirmation): rm -rf ~/src/paper-${SLUG}
+#    The submodule checkout in ~/src/neurips/${NUM}-${SLUG}/ is a working clone with .git link
+#    pointing into ~/src/neurips/.git/modules/${NUM}-${SLUG}/. The staging dir is redundant.
+```
+
+**Cross-paper invariants captured:**
+- GitHub repo name: `paper-{multi-word-slug}`. Venue-neutral; `paper-` prefix groups them under `v2-io/`.
+- Submodule path: `{NN}-{multi-word-slug}/`. Numbered prefix matches agentic-systems pattern; slug matches GitHub repo name minus `paper-`.
+- Default branch: `main`. `git init -b main` sets it from the start (no `git branch -M main` step needed).
+- Initial commit message: `Initial commit`. Standard GitHub bootstrap convention.
+- Submodule-add commit on parent: `git commit -- .gitmodules <path> -m "..."` form (pathspec-bound) to avoid sweeping in any other in-flight working-tree changes.
 
 ## Open content-migration scope
 
