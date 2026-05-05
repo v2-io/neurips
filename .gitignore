@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 .obsidian/
+
+# Build artifacts (per-paper out/ dirs)
+0?-*/out/
+00-test-paper/out/

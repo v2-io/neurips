@@ -1,0 +1,133 @@
+# NeurIPS umbrella RuboCop configuration
+#
+# Layout/alignment settings come from rubocop-tablecop.
+# Adapted from ~/src/autopax/.rubocop.yml — autopax is the canonical reference
+# implementation of the tablecop philosophy.
+
+plugins:
+  - rubocop-tablecop
+  - rubocop-performance
+
+AllCops:
+  TargetRubyVersion: 4.0
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - "tmp/**/*"
+    - "vendor/**/*"
+    - "**/out/**/*"        # Build artifacts (per-paper out/ dirs)
+    - "0?-*/spikes/**/*"   # Spike/exploration code, not production
+    - "0?-*/_archive/**/*" # Archived material
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Style
+# ─────────────────────────────────────────────────────────────────────────────
+
+Style/StringLiterals:
+  Enabled: false  # Use double quotes by convention; single when semantically meaningful
+
+Style/SymbolArray:
+  EnforcedStyle: brackets
+
+Style/Documentation:
+  Enabled: false  # Module docs not yet at the level where this is useful
+
+Style/MultilineBlockChain:
+  Enabled: false  # Allow multi-line block chains when readable
+
+Style/FrozenStringLiteralComment:
+  EnforcedStyle: never
+
+Style/ClassAndModuleChildren:
+  EnforcedStyle: compact
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Layout
+# ─────────────────────────────────────────────────────────────────────────────
+
+Layout/LineLength:
+  Max: 140
+
+Layout/LeadingCommentSpace:
+  AllowRBSInlineAnnotation: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Naming
+# ─────────────────────────────────────────────────────────────────────────────
+
+Naming/MemoizedInstanceVariableName:
+  Enabled: false
+
+Naming/VariableNumber:
+  Enabled: false
+
+Naming/MethodParameterName:
+  AllowedNames:
+    - a
+    - b
+    - c
+    - e   # exception, element, entry
+    - i   # index
+    - j   # secondary index
+    - k   # key
+    - v   # value
+    - h   # hash
+    - n   # number, count
+    - x   # coordinate, generic
+    - y   # coordinate
+    - id  # identifier
+    - io  # IO object
+    - op  # operation
+    - db  # database
+    - fn  # function
+    - s1  # string comparison
+    - s2  # string comparison
+    - to  # destination (from:, to:)
+    - of  # element type (array of:)
+    - _   # explicitly unused
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Lint
+# ─────────────────────────────────────────────────────────────────────────────
+
+Lint/DuplicateBranch:
+  Enabled: false  # tablecop alignment can make duplicate branches a feature, not a bug
+
+Lint/UnusedMethodArgument:
+  AllowUnusedKeywordArguments: true
+  IgnoreEmptyMethods: true
+
+Lint/MissingSuper:
+  Enabled: false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Metrics — lenient thresholds for real-world code
+# ─────────────────────────────────────────────────────────────────────────────
+
+Metrics/MethodLength:
+  Max: 40
+  CountAsOne: [array, hash, heredoc]
+
+Metrics/AbcSize:
+  Max: 50
+
+Metrics/CyclomaticComplexity:
+  Max: 20
+
+Metrics/PerceivedComplexity:
+  Max: 15
+
+Metrics/ClassLength:
+  Max: 300
+  CountAsOne: [array, hash, heredoc]
+
+Metrics/BlockLength:
+  Max: 40
+  CountAsOne: [array, hash, heredoc]
+  AllowedMethods: [describe, context, define, configure, namespace]
+
+Metrics/ModuleLength:
+  Max: 150
+
+Metrics/ParameterLists:
+  Max: 15
