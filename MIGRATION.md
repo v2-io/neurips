@@ -24,9 +24,11 @@ Source-of-truth restructure plan: `restructure-plan.md` (alongside this file in 
 
 ## Open questions
 
-- **Cleanup of the three temporary `~/src/paper-{slug}/` staging dirs.** Once each submodule is wired, the parent's submodule checkout (`~/src/neurips/0N-{slug}/`) is a fully working clone with its own `.git` link — Joseph can edit, commit, push from there directly. The temporary staging dirs are no longer needed for the workflow. *Default if no input:* delete after all three submodules are wired and confirmed working. Asking before doing it. The three to delete: `~/src/paper-tragedy-confident-agent/`, `~/src/paper-unified-convergence-rl/`, `~/src/paper-llm-hallucinate-bound/`.
-
 - **Content migration scope (next phase).** Structural shells exist; segmenting `paper-draft.md` into `src/{slug}.md` files + writing `OUT.*.md` concat manifests is the substantive work. Stepwise on paper #1 first, then mechanical for #2/#3 (or each paper-agent picks up their own).
+
+## Done
+
+- **2026-05-05 — Three temporary `~/src/paper-{slug}/` staging dirs deleted.** Each was clean, HEAD matched its `origin/main` exactly. Submodule checkouts at `~/src/neurips/0N-{slug}/` are the canonical working locations now.
 
 ## Reusable migration recipe — **structural shell** (paper #1 → #2/#3 mechanical)
 
