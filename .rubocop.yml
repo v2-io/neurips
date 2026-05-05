@@ -41,6 +41,9 @@ Style/FrozenStringLiteralComment:
 Style/ClassAndModuleChildren:
   EnforcedStyle: compact
 
+Style/OneClassPerFile:
+  Enabled: false  # bin/ scripts are single-purpose and intentionally bundle related classes/modules in one file
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Layout
 # ─────────────────────────────────────────────────────────────────────────────
@@ -67,6 +70,7 @@ Naming/MethodParameterName:
     - b
     - c
     - e   # exception, element, entry
+    - el  # element (kramdown converter convention)
     - i   # index
     - j   # secondary index
     - k   # key

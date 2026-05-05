@@ -1,0 +1,505 @@
+#!/usr/bin/env ruby
+#
+# bin/build — assemble a paper from an OUT.*.md manifest into a NeurIPS-formatted PDF.
+#
+# Usage:
+#   bin/build <paper-dir> [manifest-stem]
+#
+#   <paper-dir>      e.g., 00-test-paper, 01-tragedy-confident-agent
+#   [manifest-stem]  defaults to "test" (reads OUT.test.md). Reads OUT.<stem>.md.
+#
+# Phase A scope: read meta.md (YAML frontmatter + abstract), parse the OUT.*.md
+# assembly manifest, render each segment via a kramdown→LaTeX converter that
+# routes Obsidian callouts (> [!theorem] / [!lemma] / etc.) to amsthm
+# environments, [[#^anchor]] cross-refs to \Cref{anchor}, [!table] callouts to
+# \begin{table}+caption+label+tabular, [!note]/[!todo]/[!info]/[!warning]/[!tip]
+# to nothing (stripped). Splice into common/neurips_2026.tex template, run
+# lualatex twice, output to <paper-dir>/out/<stem>.pdf.
+#
+# Raw TeX passes through unmodified — backslash sequences, environments, and
+# braces are author-intentional LaTeX. Only %, &, _, #, ~, ^ are escaped (these
+# are LaTeX-special but commonly used in prose with non-LaTeX meaning).
+#
+# Lint findings are collected as a side effect of AST traversal and printed
+# at the end. Build does not auto-fix; --strict will fail on lint findings
+# (deferred until Phase B).
+
+require "kramdown"
+require "yaml"
+require "fileutils"
+require "open3"
+
+ROOT       = Pathname.new(__dir__).parent.expand_path
+COMMON_DIR = ROOT / "common"
+TEMPLATE   = COMMON_DIR / "neurips_2026.tex"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Custom kramdown→LaTeX converter
+# ─────────────────────────────────────────────────────────────────────────────
+
+class Kramdown::Converter::Neurips < Kramdown::Converter::Latex
+  # Characters we still escape in body text. We deliberately exclude
+  # backslash, braces, and dollar — those are author-intentional LaTeX
+  # (raw-TeX passthrough policy). The included characters are LaTeX-special
+  # but commonly meant literally in prose.
+  ESCAPE_MAP = {
+    "%" => "\\%",
+    "&" => "\\&",
+    "_" => "\\_",
+    "#" => "\\#",
+    "~" => "\\textasciitilde{}",
+    "^" => "\\textasciicircum{}"
+  }.freeze
+
+  # Obsidian-callout types that map to amsthm-style numbered environments.
+  # All share a single counter via amsthm's optional-counter mechanism.
+  THEOREM_LIKE = %w[
+    theorem lemma corollary proposition conjecture claim hypothesis
+    definition remark
+  ].freeze
+
+  # Callout types that consume the body but emit no LaTeX — authoring
+  # sidebars, working notes, drafting reminders.
+  STRIP_LIKE = %w[note todo info warning tip].freeze
+
+  # Cross-reference pattern (Obsidian wikilink for block references).
+  CREF_PATTERN = /\[\[#\^([\w-]+)\]\]/
+
+  # Header-anchor pattern: trailing " ^slug" on a heading title becomes
+  # the section's \label.
+  HEADER_ANCHOR_PATTERN = /\s+\^([\w-]+)\s*\z/
+
+  # ── Escape policy ────────────────────────────────────────────────────────
+
+  # Override the inherited escape — passthrough \, {, }; cross-refs handled
+  # at the text level before escaping.
+  def escape(str) = str.gsub(CREF_PATTERN) { "\\Cref{#{Regexp.last_match(1)}}" }.gsub(/[%&_#~^]/, ESCAPE_MAP)
+
+  # ── Element converters ───────────────────────────────────────────────────
+
+  def convert_header(el, opts)
+    title  = inner(el, opts)
+    anchor = nil
+    if (m  = title.match(HEADER_ANCHOR_PATTERN))
+      anchor = m[1]
+      title  = title.sub(HEADER_ANCHOR_PATTERN, "")
+    end
+    cmd = case el.options[:level]
+          when 1 then "section"
+          when 2 then "section"
+          when 3 then "subsection"
+          when 4 then "subsubsection"
+          else "paragraph"
+          end
+    # The "References" segment uses {-} class to mark unnumbered (\section*)
+    starred = el.attr["class"]&.include?("unnumbered")
+    result  = "\\#{cmd}#{'*' if starred}{#{title}}\n"
+    result << "\\label{#{anchor}}\n" if anchor && !starred
+    result << "\n"
+    result
+  end
+
+  def convert_blockquote(el, opts)
+    marker = extract_callout_marker(el)
+    return super unless marker
+
+    type = marker[:type]
+    return "" if STRIP_LIKE.include?(type)
+
+    body = inner(el, opts).strip
+
+    case type
+    when *THEOREM_LIKE then render_theorem_like(type, marker, body)
+    when "proof"       then render_proof(marker, body)
+    when "table"       then render_table_callout(marker, body)
+    when "figure"      then render_figure_callout(marker, body)
+    when "quote"       then "\\begin{quote}\n#{body}\n\\end{quote}\n\n"
+    else
+      warning("unknown callout type: [!#{type}] — passing through as plain blockquote")
+      super
+    end
+  end
+
+  # convert_table is invoked both at top level and inside [!table] callouts.
+  # We always emit just the tabular; the [!table] callout supplies the
+  # \begin{table}\caption\label{}\centering wrapper.
+  def convert_table(el, opts)
+    alignments = el.options[:alignment].map do |a|
+      case a
+      when :left   then "l"
+      when :right  then "r"
+      when :center then "c"
+      else "l"
+      end
+    end
+    result = "\\begin{tabular}{#{alignments.join}}\n"
+    result << "\\toprule\n"
+    result << inner(el, opts)
+    result << "\\bottomrule\n"
+    result << "\\end{tabular}\n"
+    result
+  end
+
+  def convert_thead(el, opts) = "#{inner(el, opts)}\\midrule\n"
+
+  def convert_tbody(el, opts) = inner(el, opts)
+  def convert_tfoot(el, opts) = inner(el, opts)
+
+  def convert_tr(el, opts)
+    cells = el.children.map { |c| inner(c, opts).strip }
+    "#{cells.join(' & ')} \\\\\n"
+  end
+
+  def convert_td(el, opts) = inner(el, opts)
+
+  # ── Helpers ──────────────────────────────────────────────────────────────
+
+  private
+
+  def extract_callout_marker(blockquote_el)
+    first_block = blockquote_el.children.first
+    return nil unless first_block&.type == :p
+
+    first_text = first_block.children.first
+    return nil unless first_text&.type == :text
+
+    text = first_text.value
+    m    = text.match(/\A\[!(\w+)\]\+?-?(?:[ \t]+(.*?))?\s*(?:\n|\z)/m)
+    return nil unless m
+
+    type                           = m[1].downcase
+    rest                           = m[2]
+    title                          = nil
+    anchor                         = nil
+    if rest && !rest.empty? && (am = rest.match(/\A(.*?)(?:\s+\^([\w-]+))?\s*\z/))
+      title  = am[1].strip
+      title  = nil if title.empty?
+      anchor = am[2]
+    end
+
+    # Mutate the AST: strip the marker line from the first text node so the
+    # body renders without it. If the marker consumed the entire first
+    # paragraph, drop the paragraph entirely.
+    remainder = text.sub(/\A\[!\w+\]\+?-?[^\n]*\n?/, "")
+    if remainder.empty?
+      first_block.children.shift
+      blockquote_el.children.shift if first_block.children.empty?
+    else
+      first_text.value = remainder
+    end
+
+    { type: type, title: title, anchor: anchor }
+  end
+
+  def render_theorem_like(env, marker, body)
+    result = "\\begin{#{env}}"
+    result << "[#{marker[:title]}]" if marker[:title]
+    result << "\n"
+    result << "\\label{#{marker[:anchor]}}\n" if marker[:anchor]
+    result << body
+    result << "\n\\end{#{env}}\n\n"
+    result
+  end
+
+  def render_proof(marker, body)
+    result = +"\\begin{proof}"
+    result << "[#{marker[:title]}]" if marker[:title]
+    result << "\n"
+    result << body
+    result << "\n\\end{proof}\n\n"
+    result
+  end
+
+  def render_table_callout(marker, body)
+    result = +"\\begin{table}[h]\n"
+    result << "  \\centering\n"
+    result << "  \\caption{#{marker[:title]}}\n" if marker[:title]
+    result << "  \\label{#{marker[:anchor]}}\n"  if marker[:anchor]
+    result << body
+    result << "\n\\end{table}\n\n"
+    result
+  end
+
+  def render_figure_callout(marker, body)
+    result = +"\\begin{figure}[h]\n"
+    result << "  \\centering\n"
+    result << body
+    result << "\n  \\caption{#{marker[:title]}}\n" if marker[:title]
+    result << "  \\label{#{marker[:anchor]}}\n" if marker[:anchor]
+    result << "\\end{figure}\n\n"
+    result
+  end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Manifest & meta parsing
+# ─────────────────────────────────────────────────────────────────────────────
+
+class Manifest
+  Row = Struct.new(:section, :type, :slug, :path, :title, :stage, keyword_init: true)
+
+  attr_reader :rows
+
+  def initialize(manifest_path)
+    @path = manifest_path
+    @rows = parse
+  end
+
+  private
+
+  def parse
+    rows  = []
+    state = :outside
+    @path.each_line do |line|
+      next unless line.start_with?("|")
+
+      cells = parse_row(line)
+      next unless cells
+
+      case state
+      when :outside       then state = :header
+      when :header        then state = (separator?(cells) ? :data : :outside)
+      when :data then rows << build_row(cells)
+      end
+    end
+    rows.compact
+  end
+
+  def parse_row(line)
+    return nil unless line.strip.start_with?("|")
+
+    line.strip.split("|")[1..-2]&.map(&:strip)
+  end
+
+  def separator?(cells) = cells.all? { |c| c.match?(/\A:?-+:?\z/) }
+
+  def build_row(cells)
+    section = cells[0]
+    type    = cells[1]&.downcase
+    slug, path = extract_link(cells[2])
+    return nil unless slug
+
+    Row.new(
+      section: section,
+      type:    type,
+      slug:    slug,
+      path:    path,
+      title:   cells[3],
+      stage:   cells[4]
+    )
+  end
+
+  def extract_link(cell)
+    m = cell&.match(/\[(?<label>[^\]]*)\]\((?<path>[^)]+)\)/)
+    return [nil, nil] unless m
+
+    [m[:label], m[:path]]
+  end
+end
+
+class Meta
+  attr_reader :title, :authors, :abstract
+
+  def initialize(meta_path)
+    raw = meta_path.read
+    if raw.start_with?("---\n")
+      _, frontmatter, body = raw.split(/^---\n/, 3)
+      data      = YAML.safe_load(frontmatter)
+      @title    = data["title"]
+      @authors  = data["authors"] || []
+      @abstract = body.strip
+    else
+      @title    = ""
+      @authors  = []
+      @abstract = raw.strip
+    end
+  end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Builder — orchestrates assembly + compilation
+# ─────────────────────────────────────────────────────────────────────────────
+
+class Builder
+  PREAMBLE_ADDITIONS = <<~TEX.freeze
+    \\usepackage{amsmath}
+    \\usepackage{amssymb}
+    \\usepackage{amsthm}
+    \\usepackage{cleveref}
+
+    \\newtheorem{theorem}{Theorem}[section]
+    \\newtheorem{lemma}[theorem]{Lemma}
+    \\newtheorem{corollary}[theorem]{Corollary}
+    \\newtheorem{proposition}[theorem]{Proposition}
+    \\newtheorem{conjecture}[theorem]{Conjecture}
+    \\newtheorem{claim}[theorem]{Claim}
+    \\newtheorem{hypothesis}[theorem]{Hypothesis}
+
+    \\theoremstyle{definition}
+    \\newtheorem{definition}[theorem]{Definition}
+
+    \\theoremstyle{remark}
+    \\newtheorem{remark}[theorem]{Remark}
+
+    \\crefname{theorem}{Theorem}{Theorems}
+    \\crefname{lemma}{Lemma}{Lemmas}
+    \\crefname{corollary}{Corollary}{Corollaries}
+    \\crefname{proposition}{Proposition}{Propositions}
+    \\crefname{definition}{Definition}{Definitions}
+    \\crefname{remark}{Remark}{Remarks}
+    \\crefname{table}{Table}{Tables}
+    \\crefname{figure}{Figure}{Figures}
+    \\crefname{equation}{Equation}{Equations}
+    \\crefname{section}{Section}{Sections}
+  TEX
+
+  def initialize(paper_dir, manifest_stem)
+    @paper_dir     = (ROOT / paper_dir).expand_path
+    @manifest_stem = manifest_stem
+    @out_dir       = @paper_dir / "out"
+    @lint_findings = []
+  end
+
+  def call
+    raise "paper dir not found: #{@paper_dir}" unless @paper_dir.directory?
+
+    meta     = Meta.new(@paper_dir / "meta.md")
+    manifest = Manifest.new(@paper_dir / "OUT.#{@manifest_stem}.md")
+
+    body_tex = assemble_body(manifest)
+    full_tex = render_template(meta, body_tex)
+
+    FileUtils.mkdir_p(@out_dir)
+    tex_path = @out_dir / "#{@manifest_stem}.tex"
+    tex_path.write(full_tex)
+
+    compile_pdf(tex_path)
+    report_lint
+    pdf_path = @out_dir / "#{@manifest_stem}.pdf"
+    puts "✓ #{pdf_path.relative_path_from(ROOT)}"
+  end
+
+  private
+
+  def assemble_body(manifest)
+    body            = +""
+    appendix_set    = false
+
+    manifest.rows.each do |row|
+      if row.type == "appendix" && !appendix_set
+        body << "\n\\appendix\n\n"
+        appendix_set = true
+      end
+      body << "\n\\newpage\n" if row.type == "checklist"
+      body << render_segment(row)
+    end
+    body
+  end
+
+  def render_segment(row)
+    src_path = @paper_dir / row.path
+    raise "segment not found: #{src_path}" unless src_path.exist?
+
+    content = src_path.read
+    if src_path.extname == ".tex"
+      "#{content}\n"
+    else
+      content = preprocess_inline_math(content)
+      doc = Kramdown::Document.new(content, input: "kramdown")
+      out, warnings = doc.to_neurips
+      warnings.each { |w| @lint_findings << "#{row.path}: #{w}" }
+      out
+    end
+  end
+
+  def render_template(meta, body_tex)
+    template = TEMPLATE.read
+
+    # Replace title
+    template = template.sub(/\\title\{[^}]*\}/, "\\title{#{meta.title}}")
+
+    # Replace author block (multi-line; from \author{ to its closing })
+    template = template.sub(/\\author\{.*?\n\}\n/m, "#{render_author_block(meta)}\n")
+
+    # Replace abstract
+    template = template.sub(/\\begin\{abstract\}.*?\\end\{abstract\}/m,
+                            "\\begin{abstract}\n#{meta.abstract}\n\\end{abstract}")
+
+    # Inject preamble additions (theorem envs + cleveref) right before \begin{document}
+    template = template.sub("\\begin{document}", "#{PREAMBLE_ADDITIONS}\n\\begin{document}")
+
+    # Replace body: from after \begin{abstract}...\end{abstract} to \end{document}
+    template.sub(
+      /(\\end\{abstract\}\n).*?(\\end\{document\})/m,
+      "\\1\n#{body_tex}\n\\2"
+    )
+  end
+
+  def render_author_block(meta)
+    lines = ["\\author{%"]
+    meta.authors.each_with_index do |a, i|
+      lines << "  \\And" if i.positive?
+      lines << "  #{a['name']} \\\\"
+      lines << "  #{a['affiliation']} \\\\" if a["affiliation"]
+      lines << "  \\texttt{#{a['email']}} \\\\" if a["email"]
+    end
+    lines << "}"
+    lines.join("\n")
+  end
+
+  # Kramdown's parser only recognizes $$...$$ as math (both inline and display),
+  # not single-dollar $...$. Academic authors write inline math as $...$, so we
+  # promote single-dollar pairs to double-dollar before parsing. The lookarounds
+  # avoid touching content already in $$...$$ form.
+  def preprocess_inline_math(content)
+    content.gsub(/(?<!\$)\$([^$\n]+?)\$(?!\$)/) { "$$#{Regexp.last_match(1)}$$" }
+  end
+
+  def compile_pdf(tex_path)
+    env = { "TEXINPUTS" => "#{COMMON_DIR}:" }
+    cmd = [
+      "lualatex",
+      "-interaction=nonstopmode",
+      "-halt-on-error",
+      "-output-directory=#{@out_dir}",
+      tex_path.to_s
+    ]
+    2.times do |pass|
+      out, status = Open3.capture2e(env, *cmd, chdir: @out_dir.to_s)
+      next if status.success?
+
+      tail = out.lines.last(40).join
+      raise "lualatex failed (pass #{pass + 1}):\n#{tail}"
+    end
+  end
+
+  def report_lint
+    return if @lint_findings.empty?
+
+    warn "── Lint findings (#{@lint_findings.size}) ──"
+    @lint_findings.each { |f| warn "  #{f.inspect}" }
+  end
+end
+
+# Wire up the converter so `doc.to_neurips` works (kramdown's auto-method
+# generation expects the converter to be registered via `convert(method_name)`).
+class Kramdown::Document
+  def to_neurips
+    output = Kramdown::Converter::Neurips.convert(@root, @options)
+    output.is_a?(Array) ? output : [output, []]
+  end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLI entry
+# ─────────────────────────────────────────────────────────────────────────────
+
+if $PROGRAM_NAME == __FILE__
+  if ARGV.empty?
+    warn "usage: bin/build <paper-dir> [manifest-stem]"
+    exit 1
+  end
+  paper_dir     = ARGV[0]
+  manifest_stem = ARGV[1] || "test"
+  Builder.new(paper_dir, manifest_stem).call
+end

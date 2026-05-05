@@ -2,20 +2,13 @@
 
 We validate [[#^thm-main]] numerically across three first-order methods. [[#^tab-rates]] reports empirical convergence rates.
 
-\begin{table}[h]
-  \caption{Empirical convergence rates (averaged over 100 trials, $\mu = 1$, $f(x) = \tfrac{1}{2}\|x\|^2 + \tfrac{1}{4}\|x\|^4$).}
-  \label{tab-rates}
-  \centering
-  \begin{tabular}{lcc}
-    \toprule
-    Method            & Rate     & Iterations to $10^{-6}$ \\
-    \midrule
-    Gradient descent  & $0.85^t$ & $\approx 120$ \\
-    Heavy ball        & $0.62^t$ & $\approx 45$  \\
-    Nesterov          & $0.38^t$ & $\approx 22$  \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+> [!table] Empirical convergence rates (averaged over 100 trials, $\mu = 1$, $f(x) = \tfrac{1}{2}\|x\|^2 + \tfrac{1}{4}\|x\|^4$). ^tab-rates
+>
+> | Method           |   Rate   | Iterations to $10^{-6}$ |
+> |:-----------------|:--------:|:-----------------------:|
+> | Gradient descent | $0.85^t$ |       $\approx 120$     |
+> | Heavy ball       | $0.62^t$ |       $\approx 45$      |
+> | Nesterov         | $0.38^t$ |       $\approx 22$      |
 
 The headline observations are:
 
