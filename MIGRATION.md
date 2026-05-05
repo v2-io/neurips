@@ -14,13 +14,19 @@ Source-of-truth restructure plan: `restructure-plan.md` (alongside this file in 
 - **2026-05-05 — Parent contents:** thin shell. Just `README.md`, `.gitignore`, `MIGRATION.md` (this file), and the per-paper submodule references. No CLAUDE.md, PRAXES.md, STYLE.md at this level yet — those decisions happen after we see how much per-paper duplication appears in practice.
 - **2026-05-05 — Per-paper canonical-repo location:** GitHub. Joseph created `git@github.com:v2-io/paper-tragedy-confident-agent.git` and the bootstrap pattern is: temporary working dir at `~/src/paper-{slug}/` → init + initial commit + push to GitHub origin → submodule-add from parent via SSH URL. The temporary `~/src/paper-{slug}/` working dir is staging, not canonical; cleanup TBD per paper (Joseph's "for a moment" framing implies removal once submoduled, but waiting on confirmation).
 
-- **2026-05-05 — Repo / submodule naming:** *hybrid numbered + multi-word slug*. GitHub repo names are `paper-{multi-word-slug}` (venue-neutral; outlives any single submission). Parent-repo submodule paths are `0N-{multi-word-slug}/` (numbered prefix matches agentic-systems convention; multi-word slug matches GitHub repo name modulo the `paper-` prefix). For paper #1: GitHub repo `paper-tragedy-confident-agent`, submodule path `01-tragedy-confident-agent/`. For papers #2 and #3: TBD pending Joseph picking the multi-word slugs (current single-word slugs are `convergence` and `hallucinate`; expected multi-word forms might be `convergence-nonstationary-rl` and `hallucinate-coupling-ambiguity` or similar — Joseph picks).
+- **2026-05-05 — Repo / submodule naming:** *hybrid numbered + multi-word slug*. GitHub repo names are `paper-{multi-word-slug}` (venue-neutral; outlives any single submission). Parent-repo submodule paths are `0N-{multi-word-slug}/` (numbered prefix matches agentic-systems convention; multi-word slug matches GitHub repo name modulo the `paper-` prefix). All three picked by Joseph:
+  - **Paper #1 (B-N4):** GitHub `paper-tragedy-confident-agent`, submodule `01-tragedy-confident-agent/`.
+  - **Paper #2 (B-CS1):** GitHub `paper-unified-convergence-rl`, submodule `02-unified-convergence-rl/`.
+  - **Paper #3 (B-N8):** GitHub `paper-llm-hallucinate-bound`, submodule `03-llm-hallucinate-bound/`.
+  - The framing-noun-first slugs (`unified-convergence-rl`, `llm-hallucinate-bound`, `tragedy-confident-agent`) sort cleanly under `v2-io/` and read as natural-language descriptors of the contribution.
 
 - **2026-05-05 — README content in per-paper repo:** ~3 lines: paper title, one-paragraph technical summary, mention of the segmented-paper workflow + concat-manifest pattern. Venue-neutral phrasing (the repo will outlive NeurIPS 2026; will also feed camera-ready, journal versions, possibly other venues).
 
 ## Open questions
 
-- **Cleanup of the temporary `~/src/paper-{slug}/` working dir.** Once the submodule is wired, the parent's submodule checkout (`~/src/neurips/0N-{slug}/`) is a fully working clone with its own `.git` link — Joseph can edit, commit, push from there directly. The temporary `~/src/paper-{slug}/` is no longer needed for the workflow. *Default if no input:* delete after submodule wiring confirmed working. Asking before doing it.
+- **Cleanup of the three temporary `~/src/paper-{slug}/` staging dirs.** Once each submodule is wired, the parent's submodule checkout (`~/src/neurips/0N-{slug}/`) is a fully working clone with its own `.git` link — Joseph can edit, commit, push from there directly. The temporary staging dirs are no longer needed for the workflow. *Default if no input:* delete after all three submodules are wired and confirmed working. Asking before doing it. The three to delete: `~/src/paper-tragedy-confident-agent/`, `~/src/paper-unified-convergence-rl/`, `~/src/paper-llm-hallucinate-bound/`.
+
+- **Content migration scope (next phase).** Structural shells exist; segmenting `paper-draft.md` into `src/{slug}.md` files + writing `OUT.*.md` concat manifests is the substantive work. Stepwise on paper #1 first, then mechanical for #2/#3 (or each paper-agent picks up their own).
 
 ## Reusable migration recipe — **structural shell** (paper #1 → #2/#3 mechanical)
 

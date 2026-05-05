@@ -4,3 +4,6 @@
 [submodule "02-unified-convergence-rl"]
 	path = 02-unified-convergence-rl
 	url = git@github.com:v2-io/paper-unified-convergence-rl.git
+[submodule "03-llm-hallucinate-bound"]
+	path = 03-llm-hallucinate-bound
+	url = git@github.com:v2-io/paper-llm-hallucinate-bound.git
