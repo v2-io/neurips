@@ -1,0 +1,13 @@
+---
+title: Functional Analysis and Applied Mathematics (in Russian)
+year: 1948
+journal: Uspekhi Matematicheskikh Nauk
+volume: '3'
+number: '6'
+pages: 89--185
+note: 'Source of the Kantorovich inequality $\mathbb{E}[X]\,\mathbb{E}[1/X] \le (M+m)^2/(4Mm)$.
+  Modern statement: Diaz \& Metcalf, Bull.\ AMS, 1963.'
+key: kantorovich-1948-functional-analysis
+type: article
+authors:
+- Kantorovich, L. V.

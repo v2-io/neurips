@@ -1,0 +1,16 @@
+---
+title: 'Continual Lifelong Learning with Neural Networks: A Review'
+year: 2019
+journal: Neural Networks
+volume: '113'
+pages: 54--71
+doi: 10.1016/j.neunet.2019.01.012
+note: Continual / lifelong learning literature anchor; B-N4 §7 bridge paragraph.
+key: parisi-2019-continual-lifelong
+type: article
+authors:
+- Parisi, German I.
+- Kemker, Ronald
+- Part, Jose L.
+- Kanan, Christopher
+- Wermter, Stefan

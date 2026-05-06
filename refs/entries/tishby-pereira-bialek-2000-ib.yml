@@ -1,0 +1,16 @@
+---
+title: The Information Bottleneck Method
+year: 2000
+booktitle: Proceedings of the 37th Annual Allerton Conference on Communication, Control,
+  and Computing
+pages: 368--377
+eprint: physics/0004057
+archiveprefix: arXiv
+note: Cited in 01-tragedy §6 (information-bottleneck framing). Field-standard IB reference;
+  verified via arXiv physics/0004057.
+key: tishby-pereira-bialek-2000-ib
+type: inproceedings
+authors:
+- Tishby, Naftali
+- Pereira, Fernando C.
+- Bialek, William

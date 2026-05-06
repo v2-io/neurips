@@ -1,0 +1,15 @@
+---
+title: Transformers learn in-context by gradient descent
+booktitle: International Conference on Machine Learning (ICML)
+year: 2023
+note: arXiv 2212.07677
+key: vonoswald-2023-transformers-gd
+type: inproceedings
+authors:
+- von Oswald, Johannes
+- Niklasson, Eyvind
+- Randazzo, Ettore
+- Sacramento, Jo{\~a}o
+- Mordvintsev, Alexander
+- Zhmoginov, Andrey
+- Vladymyrov, Max

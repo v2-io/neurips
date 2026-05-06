@@ -1,0 +1,17 @@
+---
+title: Semidefinite programming approach to {Gaussian} sequential rate-distortion
+  trade-offs
+journal: IEEE Transactions on Automatic Control
+volume: '62'
+number: '4'
+pages: 1896--1910
+year: 2017
+doi: 10.1109/TAC.2016.2601148
+note: Earlier ArXiv version 2014
+key: tanaka-kim-parrilo-mitter-2017-sdp
+type: article
+authors:
+- Tanaka, Takashi
+- Kim, Kwang-Ki K.
+- Parrilo, Pablo A.
+- Mitter, Sanjoy K.

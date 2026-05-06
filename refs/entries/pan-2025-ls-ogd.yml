@@ -1,0 +1,20 @@
+---
+title: Lyapunov-Stable Adaptive Control for Multimodal Concept Drift
+year: 2025
+booktitle: Advances in Neural Information Processing Systems 38 (NeurIPS 2025)
+note: Closest direct neighbor to B-N4's §7 concept-drift / continual-learning / open-world
+  bridge paragraph; builds an online controller for multimodal learning under concept
+  drift, with Lyapunov uniform-ultimate- boundedness guarantees. Verified 2026-05-05
+  via arXiv:2510.15944, OpenReview ID w3dMbY6rFe, and the NeurIPS 2025 San Diego poster
+  listing. Available for B-N4 inclusion if the §7 bridge paragraph wants the adjacency
+  cite.
+eprint: '2510.15944'
+archiveprefix: arXiv
+key: pan-2025-ls-ogd
+type: inproceedings
+authors:
+- Pan, Tianyu Bell
+- Zhu, Mengdi
+- Cole, Alexa Jordyn
+- Wilson, Ronald
+- Woodard, Damon L.

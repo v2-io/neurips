@@ -1,0 +1,799 @@
+#!/usr/bin/env ruby
+#
+# bin/refs — multi-agent-safe citation manager for the NeurIPS umbrella.
+#
+# Source of truth: per-entry YAML files at refs/entries/<bibkey>.yml. BibTeX is
+# a generated artifact (refs/_emitted/<paper>.bib or <paper-dir>/refs.bib),
+# never hand-edited. This makes concurrent edits collision-free at the
+# filesystem level: two agents adding distinct entries touch distinct files;
+# git resolves trivially. Two agents editing the SAME entry surface as a
+# clean single-file conflict, not as a corrupted shared bib.
+#
+# Verification audit trail: append-only event files at
+# refs/verifications/<bibkey>/<ts>-<verifier>-<criterion>.md. Multi-verifier,
+# multi-criterion, and never destructively edited. Latest status is derived
+# by replay; full history is the record.
+#
+# Anonymization: refs/deny-list.yml lists banned DOIs / authors / framework
+# proper-nouns (e.g., the ASF Zenodo DOI 10.5281/zenodo.19986312). `refs lint`
+# scans both the entries and any cited keys against this list.
+#
+# Per-paper bib emission: `refs emit <paper-dir>` scans the paper's segment
+# source for \cite{key} / \citet{key}, validates every key has a verified
+# entry, and writes <paper-dir>/refs.bib containing only those entries. The
+# existing bin/build pipeline reads <paper-dir>/refs.bib unchanged.
+#
+# Subcommands:
+#   refs add <bibkey>            — interactive add (or pipe a BibTeX entry on stdin)
+#   refs import <file.bib>       — bulk import from existing BibTeX file
+#   refs show <bibkey>           — entry + verification status + cited-by
+#   refs list [--verified]       — summary table
+#   refs search <query>          — fuzzy match by key, author, title, year
+#   refs verify <key> <crit> ... — record a verification event
+#   refs unverify <key> <crit>   — record a "regression" / contested event
+#   refs cited [<paper-dir>]     — keys cited where (defaults: all papers)
+#   refs emit <paper-dir>        — write <paper-dir>/refs.bib for build pipeline
+#   refs lint [<paper-dir>]      — anonymization + self-cite + missing-key checks
+#   refs pdf <key> <path>        — register a PDF for an entry (copy into refs/pdfs/)
+#   refs validate                — schema-check every entry; flag malformed
+#
+# Concurrency notes:
+#   - Per-entry files mean two agents adding distinct entries never collide.
+#   - Verification events are filename-unique (timestamp + nonce); append-only
+#     means no two agents write the same path.
+#   - `refs emit` reads but does not mutate entries, so it's safe to run from
+#     a build invocation while another agent is editing an unrelated entry.
+#   - Validation runs per-file; one malformed entry doesn't block the rest.
+
+require "yaml"
+require "fileutils"
+
+ROOT          = Pathname.new(__dir__).parent.expand_path
+REFS_DIR      = ROOT / "refs"
+ENTRIES_DIR   = REFS_DIR / "entries"
+VERIFY_DIR    = REFS_DIR / "verifications"
+PDFS_DIR      = REFS_DIR / "pdfs"
+EMITTED_DIR   = REFS_DIR / "_emitted"
+DENY_LIST     = REFS_DIR / "deny-list.yml"
+
+# Verification criteria: enumerated so verifier choices are coherent across the
+# project. New criteria added here also need handling in `summarize_status`.
+CRITERIA = {
+  "bib-fields"      => "Authors / year / title / venue match the published record.",
+  "doi-resolves"    => "DOI resolves to the cited paper (not redirected, not 404).",
+  "claim-supported" => "The cited paper's text actually supports the claim it's used for.",
+  "page-ref"        => "Specific page / section reference is correct.",
+  "anonymization"   => "Citing this entry does not violate anonymization (deny-list clean).",
+  "no-self-cite"    => "Entry is not a self-citation (does not appear on the self-cite deny-list)."
+}.freeze
+
+# Required fields for an entry to be schema-valid. Optional fields (doi, url,
+# pages, volume, etc.) flow through to the emitted .bib file as-is.
+REQUIRED_FIELDS = %w[key type title authors year].freeze
+
+VALID_TYPES = %w[article book inproceedings incollection misc techreport phdthesis mastersthesis unpublished].freeze
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Entry — one YAML file = one bib entry. Filename is the canonical key.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class Entry
+  attr_reader :key, :data
+
+  def initialize(key, data)
+    @key  = key
+    @data = data
+  end
+
+  def self.path_for(key) = ENTRIES_DIR / "#{key}.yml"
+
+  def self.load(key)
+    path = path_for(key)
+    return nil unless path.exist?
+
+    new(key, YAML.safe_load_file(path, permitted_classes: [Date]))
+  end
+
+  def self.all
+    ENTRIES_DIR.glob("*.yml").sort.filter_map do |p|
+      key = p.basename(".yml").to_s
+      load(key)
+    end
+  end
+
+  def save
+    ENTRIES_DIR.mkpath
+    Entry.path_for(@key).write(YAML.dump(@data))
+  end
+
+  def title        = @data["title"]
+  def year         = @data["year"]
+  def type         = @data["type"]
+  def authors      = Array(@data["authors"])
+  def doi          = @data["doi"]
+  def url          = @data["url"]
+  def venue        = @data["venue"] || @data["journal"] || @data["booktitle"] || @data["publisher"]
+  def first_author = authors.first.to_s.split(",").first.to_s.strip
+
+  def schema_errors
+    errors = []
+    REQUIRED_FIELDS.each { |f| errors << "missing required field '#{f}'" if @data[f].to_s.empty? && f != "authors" }
+    errors << "missing or empty 'authors' list" if authors.empty?
+    errors << "type '#{type}' not in #{VALID_TYPES.inspect}" if type && !VALID_TYPES.include?(type)
+    errors << "year '#{year}' is not a 4-digit year" unless year.to_s.match?(/\A\d{4}\z/)
+    errors
+  end
+
+  # Render this entry as a BibTeX string. Authors join with " and " (BibTeX
+  # convention); fields drop into the appropriate slots based on entry type.
+  def to_bibtex
+    type_str = "@#{type}"
+    fields   = bibtex_fields
+    body     = fields.map { |k, v| "  #{k.ljust(10)} = {#{v}}," }.join("\n")
+    "#{type_str}{#{@key},\n#{body.chomp(',')}\n}"
+  end
+
+  private
+
+  def bibtex_fields
+    out             = {}
+    out["author"]   = authors.join(" and ")
+    out["title"]    = @data["title"]
+    out["year"]     = @data["year"].to_s
+    %w[journal booktitle publisher series volume number pages edition address school institution howpublished
+       editor doi url note month chapter organization].each do |f|
+      out[f] = @data[f] if @data[f]
+    end
+    out
+  end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VerificationEvent — append-only record of a verification act. Filename is
+# unique per event (timestamp + verifier + criterion); creating an event
+# never edits an existing file.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class VerificationEvent
+  attr_reader :key, :criterion, :verifier, :outcome, :timestamp, :note
+
+  def initialize(key:, criterion:, verifier:, outcome:, note: nil, timestamp: nil)
+    @key       = key
+    @criterion = criterion
+    @verifier  = verifier
+    @outcome   = outcome  # "verified" | "failed" | "uncertain" | "n/a"
+    @note      = note
+    @timestamp = timestamp || Time.now.utc.strftime("%Y%m%dT%H%M%SZ")
+  end
+
+  def self.dir_for(key) = VERIFY_DIR / key
+
+  def self.events_for(key)
+    return [] unless dir_for(key).exist?
+
+    dir_for(key).glob("*.md").sort.filter_map { |p| load_file(p, key) }
+  end
+
+  def self.load_file(path, key)
+    body                 = path.read
+    fm, content          = split_frontmatter(body)
+    return nil unless fm
+
+    new(
+      key:       key,
+      criterion: fm["criterion"],
+      verifier:  fm["verifier"],
+      outcome:   fm["outcome"],
+      note:      content&.strip,
+      timestamp: fm["timestamp"]
+    )
+  end
+
+  def self.split_frontmatter(body)
+    return [nil, body] unless body.start_with?("---\n")
+
+    parts = body.split(/^---\s*$/, 3)
+    return [nil, body] if parts.size < 3
+
+    [YAML.safe_load(parts[1]), parts[2]]
+  end
+
+  def filename = "#{@timestamp}-#{slug(@verifier)}-#{slug(@criterion)}.md"
+
+  def write
+    dir = self.class.dir_for(@key)
+    dir.mkpath
+    path = dir / filename
+    path.write(<<~CONTENT)
+      ---
+      key: #{@key}
+      criterion: #{@criterion}
+      verifier: #{@verifier}
+      outcome: #{@outcome}
+      timestamp: #{@timestamp}
+      ---
+
+      #{@note || ''}
+    CONTENT
+    path
+  end
+
+  private
+
+  def slug(str) = str.to_s.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/^-|-$/, "")
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BibtexImporter — best-effort parse of an existing .bib file into Entry
+# YAML files. Field-by-field; not a full BibTeX parser (no @string macros, no
+# crossref). Good enough for the existing 164-entry common/refs.bib which is
+# already well-formed.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class BibtexImporter
+  ENTRY_RE = /@(?<type>\w+)\s*\{\s*(?<key>[^,\s]+)\s*,(?<body>.*?)\n\}\s*$/m
+
+  def initialize(text) = @text = strip_comments(text)
+
+  def entries
+    @text.scan(ENTRY_RE).map do |type, key, body|
+      data         = parse_fields(body)
+      data["key"]  = key
+      data["type"] = type.downcase
+      authors      = (data.delete("author") || "").split(/\s+and\s+/).map(&:strip).reject(&:empty?)
+      data["authors"] = authors
+      Entry.new(key, data)
+    end
+  end
+
+  private
+
+  def strip_comments(text) = text.lines.reject { |line| line.lstrip.start_with?("%") }.join
+
+  def parse_fields(body)
+    out      = {}
+    cursor   = 0
+    while (m = body.match(/(\w+)\s*=\s*/, cursor))
+      field      = m[1].downcase
+      after_eq   = m.end(0)
+      value, nxt = read_value(body, after_eq)
+      out[field] = value if value
+      cursor     = nxt
+    end
+    coerce_numbers(out)
+    out
+  end
+
+  # Read a brace- or quote-delimited value starting at `pos`. Returns
+  # [value, next_cursor]. Handles nested braces.
+  def read_value(body, pos)
+    pos += 1 while pos < body.length && body[pos].match?(/\s/)
+    return [nil, pos] if pos >= body.length
+
+    case body[pos]
+    when "{" then read_braced(body, pos)
+    when '"' then read_quoted(body, pos)
+    else          read_bare(body, pos)
+    end
+  end
+
+  def read_braced(body, pos)
+    depth  = 0
+    start  = pos + 1
+    cursor = pos
+    while cursor < body.length
+      case body[cursor]
+      when "{" then depth += 1
+      when "}"
+        depth -= 1
+        return [body[start...cursor].strip.gsub(/\s+/, " "), skip_sep(body, cursor + 1)] if depth.zero?
+      end
+      cursor += 1
+    end
+    [body[start..].strip, body.length]
+  end
+
+  def read_quoted(body, pos)
+    start = pos + 1
+    close = body.index('"', start)
+    return [body[start..].strip, body.length] unless close
+
+    [body[start...close].strip, skip_sep(body, close + 1)]
+  end
+
+  def read_bare(body, pos)
+    m = body.match(/[^,\n]+/, pos)
+    return [nil, pos] unless m
+
+    [m[0].strip, skip_sep(body, m.end(0))]
+  end
+
+  def skip_sep(body, pos)
+    pos += 1 while pos < body.length && body[pos].match?(/[,\s]/)
+    pos
+  end
+
+  def coerce_numbers(data) data["year"] = Regexp.last_match(0).to_i if data["year"].to_s =~ /\d{4}/ end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CitationScanner — finds \cite{...} / \citet{...} / \citep{...} usage in
+# paper segment markdown. Used by `refs emit` (per-paper bib generation),
+# `refs cited` (cross-paper coverage), and `refs lint` (missing-key check).
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CitationScanner
+  CITE_RE = /\\cite[tp]?\*?\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/
+
+  def initialize(paper_dir) = @paper_dir = Pathname.new(paper_dir).expand_path
+
+  # Map of bibkey => array of "<file>:<line>" call sites (deduped per location).
+  def call_sites
+    sites = Hash.new { |h, k| h[k] = [] }
+    md_files.each do |path|
+      path.each_line.with_index(1) do |line, lineno|
+        line.scan(CITE_RE) do |match|
+          match.first.split(",").map(&:strip).each do |key|
+            next if key.empty?
+
+            site = "#{path.relative_path_from(@paper_dir)}:#{lineno}"
+            sites[key] << site unless sites[key].include?(site)
+          end
+        end
+      end
+    end
+    sites
+  end
+
+  def keys = call_sites.keys.sort
+
+  private
+
+  def md_files
+    src = @paper_dir / "src"
+    return [] unless src.directory?
+
+    src.glob("**/*.md").sort
+  end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DenyList — anonymization deny-list. Loaded from refs/deny-list.yml; covers
+# DOIs that must not be cited (the ASF Zenodo DOI), authors that flag self-cite
+# concern, and framework / ELI proper-nouns from AUTHORING.md §3.5.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class DenyList
+  attr_reader :data
+
+  def initialize(path = DENY_LIST) = @data = path.exist? ? YAML.safe_load_file(path) : default_data
+
+  def violations(entry)
+    out = []
+    if entry.doi && Array(@data["dois"]).any? { |d| entry.doi.include?(d) }
+      out << "DOI '#{entry.doi}' on the deny-list (likely self-cite or framework reference)"
+    end
+    Array(@data["authors"]).each do |banned|
+      out << "author '#{banned}' on the deny-list" if entry.authors.any? { |a| a.include?(banned) }
+    end
+    Array(@data["proper_nouns"]).each do |term|
+      out << "title contains banned proper-noun '#{term}'" if entry.title&.include?(term)
+    end
+    out
+  end
+
+  def default_data
+    {
+      "dois"         => ["10.5281/zenodo.19986312"], # ASF working paper
+      "authors"      => ["Wecker"],
+      "proper_nouns" => %w[ASF AAD PROPRIUM AXIOMATA CHRONICA VERA MEMORATA Zi-am-tur Anamnos Lumin Architectus]
+    }
+  end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# StatusReport — derive verification status from event replay. Per criterion,
+# the latest event wins; the entry's "verified" status is the conjunction
+# (all required criteria have a "verified" outcome).
+# ─────────────────────────────────────────────────────────────────────────────
+
+class StatusReport
+  REQUIRED_FOR_PASS = %w[bib-fields doi-resolves anonymization].freeze
+
+  def initialize(key)
+    @key    = key
+    @events = VerificationEvent.events_for(key)
+  end
+
+  # Latest event per criterion (events are sorted by filename = timestamp).
+  def latest_per_criterion = @events.to_h { |ev| [ev.criterion, ev] }
+
+  def status_for(criterion)
+    ev = latest_per_criterion[criterion]
+    ev ? ev.outcome : "unverified"
+  end
+
+  def overall
+    latest = latest_per_criterion
+    return "unverified" if (REQUIRED_FOR_PASS - latest.keys).any?
+
+    REQUIRED_FOR_PASS.all? { |c| latest[c]&.outcome == "verified" } ? "verified" : "issues"
+  end
+
+  def summary_line
+    parts = CRITERIA.keys.map { |c| "#{c}=#{status_for(c)}" }
+    "#{@key.ljust(48)}  #{overall.ljust(10)}  #{parts.join(' ')}"
+  end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLI — verb dispatch. Each verb is a method on this class; the option parser
+# is lightweight (most verbs take positional args).
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CLI
+  def self.run(argv) = new.dispatch(argv)
+
+  def dispatch(argv)
+    verb = argv.shift or return usage
+    case verb
+    when "add"        then cmd_add(argv)
+    when "import"     then cmd_import(argv)
+    when "show"       then cmd_show(argv)
+    when "list"       then cmd_list(argv)
+    when "search"     then cmd_search(argv)
+    when "verify"     then cmd_verify(argv)
+    when "unverify"   then cmd_unverify(argv)
+    when "cited"      then cmd_cited(argv)
+    when "emit"       then cmd_emit(argv)
+    when "lint"       then cmd_lint(argv)
+    when "pdf"        then cmd_pdf(argv)
+    when "validate"   then cmd_validate(argv)
+    when "-h", "--help", "help" then usage
+    else warn "unknown verb: #{verb}"
+         usage
+         exit 1
+    end
+  end
+
+  def usage
+    puts <<~USAGE
+      bin/refs — multi-agent-safe citation manager.
+
+      Verbs:
+        add <bibkey>             Interactive add, or pipe BibTeX on stdin.
+        import <file.bib>        Bulk import from existing BibTeX file.
+        show <bibkey>            Entry + verification + cited-by.
+        list [--verified]        All entries, summary table.
+        search <query>           Fuzzy match by key / author / title / year.
+        verify <key> <criterion> [--by <name>] [--outcome <state>] [--note <text>]
+                                 Append a verification event. Outcome: verified | failed | uncertain | n/a.
+        unverify <key> <crit>    Append a "failed" event (requires --note).
+        cited [<paper-dir>]      Keys cited where; defaults to all 0?-* papers.
+        emit <paper-dir>         Write <paper-dir>/refs.bib for build pipeline.
+        lint [<paper-dir>]       Anonymization + missing-key + self-cite check.
+        pdf <key> <path>         Register a PDF for an entry.
+        validate                 Schema-check every entry.
+
+      Schema: refs/entries/<bibkey>.yml. See refs/README.md for the format.
+      Verification audit trail: refs/verifications/<bibkey>/*.md (append-only).
+    USAGE
+  end
+
+  # ── add / import ─────────────────────────────────────────────────────────
+
+  def cmd_add(argv)
+    bibkey = argv.shift
+    abort "usage: refs add <bibkey>  (pipe BibTeX on stdin, or omit to scaffold)" unless bibkey
+
+    if Entry.path_for(bibkey).exist?
+      warn "entry '#{bibkey}' already exists at #{Entry.path_for(bibkey).relative_path_from(ROOT)}"
+      exit 2
+    end
+
+    if $stdin.tty?
+      scaffold_entry(bibkey)
+    else
+      import_one_from_stdin(bibkey)
+    end
+  end
+
+  def scaffold_entry(bibkey)
+    data = {
+      "key"     => bibkey,
+      "type"    => "article",
+      "title"   => "<TITLE>",
+      "authors" => ["<Lastname, Firstname>"],
+      "year"    => 0,
+      "venue"   => "<VENUE>",
+      "doi"     => nil
+    }
+    Entry.new(bibkey, data).save
+    puts "scaffolded #{Entry.path_for(bibkey).relative_path_from(ROOT)} — edit fields, then `refs verify`."
+  end
+
+  def import_one_from_stdin(bibkey)
+    text     = $stdin.read
+    importer = BibtexImporter.new(text)
+    found    = importer.entries.find { |e| e.key == bibkey }
+    abort "no @<type>{#{bibkey},...} entry found in stdin" unless found
+
+    found.save
+    puts "imported #{Entry.path_for(bibkey).relative_path_from(ROOT)}"
+  end
+
+  def cmd_import(argv)
+    path = argv.shift or abort "usage: refs import <file.bib>"
+    bib  = Pathname.new(path).expand_path
+    abort "file not found: #{bib}" unless bib.exist?
+
+    importer = BibtexImporter.new(bib.read)
+    added    = 0
+    skipped  = 0
+    importer.entries.each do |entry|
+      if Entry.path_for(entry.key).exist?
+        skipped += 1
+        warn "  skip (exists): #{entry.key}"
+      else
+        entry.save
+        added += 1
+      end
+    end
+    puts "imported #{added} entries; skipped #{skipped} pre-existing."
+  end
+
+  # ── show / list / search ─────────────────────────────────────────────────
+
+  def cmd_show(argv)
+    key   = argv.shift or abort "usage: refs show <bibkey>"
+    entry = Entry.load(key) or abort "no such entry: #{key}"
+
+    show_fields(entry)
+    show_verification(key)
+    show_history(key)
+    show_cited_in(key)
+  end
+
+  def show_fields(entry)
+    puts "key:     #{entry.key}"
+    puts "type:    #{entry.type}"
+    puts "title:   #{entry.title}"
+    puts "authors: #{entry.authors.join('; ')}"
+    puts "year:    #{entry.year}"
+    puts "venue:   #{entry.venue}" if entry.venue
+    puts "doi:     #{entry.doi}"   if entry.doi
+  end
+
+  def show_verification(key)
+    status = StatusReport.new(key)
+    puts
+    puts "verification:"
+    CRITERIA.each_key { |c| puts "  #{c.ljust(20)} #{status.status_for(c)}" }
+    puts "  ────────────────"
+    puts "  overall              #{status.overall}"
+  end
+
+  def show_history(key)
+    events = VerificationEvent.events_for(key)
+    return if events.empty?
+
+    puts
+    puts "history:"
+    events.each { |e| puts "  #{e.timestamp}  #{e.verifier.ljust(20)} #{e.criterion.ljust(20)} #{e.outcome}" }
+  end
+
+  def show_cited_in(key)
+    cited_in = scan_all_papers_for(key)
+    return if cited_in.empty?
+
+    puts
+    puts "cited in:"
+    cited_in.each { |line| puts "  #{line}" }
+  end
+
+  def cmd_list(argv)
+    only_verified = argv.include?("--verified")
+    entries       = Entry.all
+    entries.each do |e|
+      status = StatusReport.new(e.key)
+      next if only_verified && status.overall != "verified"
+
+      puts format("%<key>-46s  %<status>-10s  %<year>4s  %<title>s",
+                  key: e.key[0, 46], status: status.overall, year: e.year, title: e.title.to_s[0, 60])
+    end
+    puts "(#{entries.size} entries#{'; filtered to verified' if only_verified})"
+  end
+
+  def cmd_search(argv)
+    query = argv.join(" ").downcase
+    abort "usage: refs search <query>" if query.empty?
+
+    Entry.all.each do |e|
+      hay = [e.key, e.authors.join(" "), e.title, e.year, e.venue].compact.join(" ").downcase
+      next unless query.split.all? { |term| hay.include?(term) }
+
+      puts format("%<key>-46s  %<year>4s  %<title>s", key: e.key[0, 46], year: e.year, title: e.title.to_s[0, 70])
+    end
+  end
+
+  # ── verify / unverify ────────────────────────────────────────────────────
+
+  def cmd_verify(argv)
+    key, criterion, *rest = argv
+    abort "usage: refs verify <key> <criterion> [--by name] [--outcome state] [--note text]" unless key && criterion
+    abort "no such entry: #{key}" unless Entry.load(key)
+    abort "unknown criterion '#{criterion}'; valid: #{CRITERIA.keys.inspect}" unless CRITERIA.key?(criterion)
+
+    opts     = parse_kv_flags(rest)
+    verifier = opts["by"] || opts["verifier"] || ENV["USER"] || "unknown"
+    outcome  = opts["outcome"] || "verified"
+    note     = opts["note"]
+
+    valid_outcomes = %w[verified failed uncertain n/a]
+    abort "outcome must be one of #{valid_outcomes.inspect}" unless valid_outcomes.include?(outcome)
+
+    ev   = VerificationEvent.new(key: key, criterion: criterion, verifier: verifier, outcome: outcome, note: note)
+    path = ev.write
+    puts "recorded #{path.relative_path_from(ROOT)}"
+  end
+
+  def cmd_unverify(argv)
+    key, criterion, *rest = argv
+    abort "usage: refs unverify <key> <criterion> --note <reason>" unless key && criterion
+
+    opts = parse_kv_flags(rest)
+    abort "unverify requires --note explaining why" unless opts["note"]
+
+    cmd_verify([key, criterion, "--outcome", "failed", "--note", opts["note"], *("--by #{opts['by']}".split if opts["by"])].compact)
+  end
+
+  # ── cited / emit ─────────────────────────────────────────────────────────
+
+  def cmd_cited(argv)
+    target_dir = argv.shift
+    paper_dirs = target_dir ? [Pathname.new(target_dir).expand_path] : default_paper_dirs
+
+    paper_dirs.each do |pd|
+      next unless pd.directory?
+
+      scanner = CitationScanner.new(pd)
+      sites   = scanner.call_sites
+      next if sites.empty?
+
+      puts "#{pd.relative_path_from(ROOT)}  (#{sites.size} unique keys)"
+      sites.each do |key, locs|
+        marker = Entry.load(key) ? " " : "?"
+        puts "  #{marker} #{key.ljust(46)}  #{locs.first}#{" (+#{locs.size - 1})" if locs.size > 1}"
+      end
+    end
+  end
+
+  def cmd_emit(argv)
+    target = argv.shift or abort "usage: refs emit <paper-dir>"
+    pd     = Pathname.new(target).expand_path
+    abort "not a directory: #{pd}" unless pd.directory?
+
+    scanner = CitationScanner.new(pd)
+    keys    = scanner.keys
+    missing = keys.reject { |k| Entry.load(k) }
+    if missing.any?
+      warn "missing entries (will not appear in emitted bib):"
+      missing.each { |k| warn "  - #{k}  (#{scanner.call_sites[k].first})" }
+    end
+
+    bib_path = pd / "refs.bib"
+    write_bib(bib_path, keys.filter_map { |k| Entry.load(k) })
+    puts "wrote #{bib_path.relative_path_from(ROOT)}  (#{keys.size - missing.size} entries; #{missing.size} missing)"
+  end
+
+  def write_bib(path, entries)
+    header = <<~HEADER
+      % refs.bib — emitted by bin/refs from refs/entries/. Do not hand-edit.
+      % Source of truth: refs/entries/<bibkey>.yml. Verification status:
+      % refs/verifications/<bibkey>/*.md. Run `bin/refs emit <paper-dir>` to
+      % regenerate after entry edits.
+
+    HEADER
+    body = entries.map(&:to_bibtex).join("\n\n")
+    path.write("#{header}#{body}\n")
+  end
+
+  # ── lint ─────────────────────────────────────────────────────────────────
+
+  def cmd_lint(argv)
+    target_dir = argv.shift
+    paper_dirs = target_dir ? [Pathname.new(target_dir).expand_path] : default_paper_dirs
+    deny       = DenyList.new
+    findings   = []
+
+    Entry.all.each do |entry|
+      deny.violations(entry).each { |v| findings << "DENY  #{entry.key}: #{v}" }
+      entry.schema_errors.each    { |e| findings << "SCHEMA #{entry.key}: #{e}" }
+    end
+
+    paper_dirs.each do |pd|
+      next unless pd.directory?
+
+      CitationScanner.new(pd).call_sites.each do |key, locs|
+        unless Entry.load(key)
+          findings << "MISSING #{key}: cited in #{pd.basename} at #{locs.first}, no entry"
+          next
+        end
+        status = StatusReport.new(key)
+        findings << "UNVERIFIED #{key}: cited in #{pd.basename}, status=#{status.overall}" if status.overall != "verified"
+      end
+    end
+
+    if findings.empty?
+      puts "lint: clean."
+    else
+      findings.sort.each { |f| puts f }
+      puts
+      puts "(#{findings.size} findings)"
+      exit 1 if ENV["REFS_LINT_STRICT"]
+    end
+  end
+
+  # ── pdf / validate ───────────────────────────────────────────────────────
+
+  def cmd_pdf(argv)
+    key, src = argv
+    abort "usage: refs pdf <key> <path-to-pdf>" unless key && src
+    abort "no such entry: #{key}" unless Entry.load(key)
+    abort "file not found: #{src}" unless File.exist?(src)
+
+    PDFS_DIR.mkpath
+    dst = PDFS_DIR / "#{key}.pdf"
+    FileUtils.cp(src, dst)
+    puts "registered #{dst.relative_path_from(ROOT)}"
+  end
+
+  def cmd_validate(_argv)
+    issues = 0
+    Entry.all.each do |entry|
+      errors = entry.schema_errors
+      next if errors.empty?
+
+      puts "#{entry.key}:"
+      errors.each { |e| puts "  - #{e}" }
+      issues += 1
+    end
+    puts(issues.zero? ? "all #{Entry.all.size} entries valid." : "(#{issues} entries with schema issues)")
+    exit 1 if issues.positive?
+  end
+
+  # ── helpers ──────────────────────────────────────────────────────────────
+
+  def default_paper_dirs = ROOT.glob("0?-*").select(&:directory?).sort
+
+  def scan_all_papers_for(key)
+    default_paper_dirs.flat_map do |pd|
+      sites = CitationScanner.new(pd).call_sites[key] || []
+      sites.map { |s| "#{pd.basename}/#{s}" }
+    end
+  end
+
+  # Lightweight `--key value` flag parser (positional args were consumed before
+  # we got here). Accepts `--key=value` and `--key value` forms.
+  def parse_kv_flags(args)
+    out    = {}
+    cursor = 0
+    while cursor < args.length
+      a = args[cursor]
+      if a.start_with?("--") && a.include?("=")
+        k, v        = a.sub(/^--/, "").split("=", 2)
+        out[k]      = v
+        cursor      += 1
+      elsif a.start_with?("--")
+        k          = a.sub(/^--/, "")
+        out[k]     = args[cursor + 1]
+        cursor     += 2
+      else
+        cursor += 1
+      end
+    end
+    out
+  end
+end
+
+CLI.run(ARGV) if __FILE__ == $PROGRAM_NAME

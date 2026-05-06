@@ -1,0 +1,17 @@
+---
+title: A Survey on Concept Drift Adaptation
+year: 2014
+journal: ACM Computing Surveys
+volume: '46'
+number: '4'
+articleno: '44'
+doi: 10.1145/2523813
+note: Concept-drift detection / adaptation literature anchor; B-N4 §7 bridge paragraph.
+key: gama-2014-concept-drift-survey
+type: article
+authors:
+- Gama, João
+- "{\\v{Z}}liobait{\\.{e}}, Indr{\\.{e}}"
+- Bifet, Albert
+- Pechenizkiy, Mykola
+- Bouchachia, Abdelhamid

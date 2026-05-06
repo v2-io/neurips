@@ -1,0 +1,12 @@
+---
+title: Entropy and Information Theory
+year: 2011
+edition: 2nd
+publisher: Springer
+doi: 10.1007/978-1-4419-7970-4
+note: Cited in 03-hallucinate §2 for Theorem 5.4 (KL chain rule on abstract spaces);
+  field-standard information-theory textbook.
+key: gray-2011-entropy
+type: book
+authors:
+- Gray, Robert M.

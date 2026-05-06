@@ -1,0 +1,17 @@
+---
+title: Risks from Learned Optimization in Advanced Machine Learning Systems
+year: 2019
+eprint: '1906.01820'
+archiveprefix: arXiv
+primaryclass: cs.AI
+note: 'arXiv preprint; not peer-reviewed in any conference or journal venue. Author-decision
+  required: drop the §7.6 paragraph that cites this, or retain citation with explicit
+  ``arXiv preprint'''' framing.'
+key: hubinger-2019-mesa-optim
+type: misc
+authors:
+- Hubinger, Evan
+- van Merwijk, Chris
+- Mikulik, Vladimir
+- Skalse, Joar
+- Garrabrant, Scott

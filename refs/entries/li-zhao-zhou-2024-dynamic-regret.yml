@@ -1,0 +1,14 @@
+---
+title: Dynamic regret of adversarial {MDPs} with unknown transition and linear function
+  approximation
+booktitle: Proceedings of the AAAI Conference on Artificial Intelligence
+volume: '38'
+number: '12'
+year: 2024
+doi: 10.1609/aaai.v38i12.29261
+key: li-zhao-zhou-2024-dynamic-regret
+type: inproceedings
+authors:
+- Li, Long-Fei
+- Zhao, Peng
+- Zhou, Zhi-Hua

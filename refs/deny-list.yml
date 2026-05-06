@@ -1,0 +1,45 @@
+# refs/deny-list.yml — anonymization deny-list for `bin/refs lint`.
+#
+# Sourced from AUTHORING.md §3.5 (anonymization) and §"Self-citation policy"
+# in REFS-AND-CITATIONS.md. Edit this file when the anonymization vocabulary
+# evolves; lint reads it on every run.
+#
+# Three categories scanned per entry:
+#   - dois         — DOIs that must not be cited (substring match on entry.doi)
+#   - authors      — author surnames flagging potential self-citation
+#   - proper_nouns — framework / ELI proper nouns that must not appear in titles
+#
+# A finding here is not always a hard block: an author named "Wecker" who is
+# unrelated to this project would surface as a finding to be triaged. The lint
+# tool surfaces; the human (or follow-up agent) confirms.
+
+dois:
+  # ASF working paper — citing this is a double-blind violation per
+  # AUTHORING.md §3.5. The same derivations live under the author's name on
+  # Zenodo; a reviewer following the DOI would deanonymize the submission.
+  - "10.5281/zenodo.19986312"
+
+authors:
+  - "Wecker"
+
+proper_nouns:
+  # Framework names from AUTHORING.md §3.5
+  - "ASF"
+  - "AAD"
+  - "PROPRIUM"
+  - "AXIOMATA"
+  - "CHRONICA"
+  - "VERA"
+  - "MEMORATA"
+  # ELI names
+  - "Zi-am-tur"
+  - "Anamnos"
+  - "Lumin"
+  - "Architectus"
+  - "Resonance"
+  - "Soren"
+  - "Tartur"
+  - "Calyx"
+  - "Katan"
+  - "Synesis"
+  - "Proto-Architectus"

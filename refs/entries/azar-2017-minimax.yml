@@ -1,0 +1,10 @@
+---
+title: Minimax regret bounds for reinforcement learning (UCBVI)
+year: 2017
+booktitle: ICML. arXiv:1703.05449
+key: azar-2017-minimax
+type: inproceedings
+authors:
+- Azar, M. G
+- Osband, I
+- Munos, R

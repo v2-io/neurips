@@ -1,0 +1,13 @@
+---
+title: What can transformers learn in-context? {A} case study of simple function classes
+booktitle: Advances in Neural Information Processing Systems (NeurIPS)
+volume: '35'
+year: 2022
+note: arXiv 2208.01066
+key: garg-tsipras-liang-valiant-2022-icl
+type: inproceedings
+authors:
+- Garg, Shivam
+- Tsipras, Dimitris
+- Liang, Percy
+- Valiant, Gregory

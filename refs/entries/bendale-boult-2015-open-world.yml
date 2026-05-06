@@ -1,0 +1,13 @@
+---
+title: Towards Open World Recognition
+year: 2015
+booktitle: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition
+  (CVPR)
+pages: 1893--1902
+doi: 10.1109/CVPR.2015.7298799
+note: Open-world-recognition literature anchor; B-N4 §7 bridge paragraph.
+key: bendale-boult-2015-open-world
+type: inproceedings
+authors:
+- Bendale, Abhijit
+- Boult, Terrance E.

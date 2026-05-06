@@ -1,0 +1,10 @@
+---
+title: Calibrated language models must hallucinate
+booktitle: Proceedings of the 56th Annual ACM Symposium on Theory of Computing (STOC)
+year: 2024
+doi: 10.1145/3618260.3649777
+key: kalai-vempala-2024-must-hallucinate
+type: inproceedings
+authors:
+- Kalai, Adam Tauman
+- Vempala, Santosh S.

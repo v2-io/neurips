@@ -1,0 +1,19 @@
+---
+title: Kalman Filtering with Intermittent Observations
+year: 2004
+journal: IEEE Transactions on Automatic Control
+volume: '49'
+number: '9'
+pages: 1453--1464
+doi: 10.1109/TAC.2004.834121
+note: Theorem 2 (critical observation-arrival probability for $\mathbb{E}[P_t] < \infty$);
+  the averaged-vs-pathwise distinction at p.~4 is cited in B-N4 §8.1.
+key: sinopoli-2004-intermittent-kalman
+type: article
+authors:
+- Sinopoli, Bruno
+- Schenato, Luca
+- Franceschetti, Massimo
+- Poolla, Kameshwar
+- Jordan, Michael I.
+- Sastry, Shankar S.

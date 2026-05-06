@@ -1,0 +1,12 @@
+---
+title: Trust region policy optimization (TRPO)
+year: 2015
+booktitle: ICML. arXiv:1502.05477
+key: schulman-2015-trust
+type: inproceedings
+authors:
+- Schulman, J
+- Levine, S
+- Moritz, P
+- Jordan, M. I
+- Abbeel, P

@@ -1,0 +1,14 @@
+---
+title: "{VIME}: Variational information maximizing exploration"
+booktitle: Advances in Neural Information Processing Systems 29 (NIPS 2016)
+year: 2016
+note: arXiv 1605.09674
+key: houthooft-2016-vime
+type: inproceedings
+authors:
+- Houthooft, Rein
+- Chen, Xi
+- Duan, Yan
+- Schulman, John
+- De Turck, Filip
+- Abbeel, Pieter

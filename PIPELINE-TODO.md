@@ -39,10 +39,10 @@ The build pipeline's lint pass should warn on (or convert / strip) authoring pat
 ## C. Phase B converter work
 
 - [ ] **C1. Citation rendering — bracketed superscript via natbib.** Decision per `REFS-AND-CITATIONS.md`. Implementation steps:
-  1. Add `\PassOptionsToPackage{numbers,super,sort&compress}{natbib}` to the build's preamble (`bin/build`'s `PREAMBLE_ADDITIONS` constant, or factor out to `common/preamble.tex` if the constant grows).
-  2. Add `\bibliographystyle{unsrtnat}` (citation order) + `\bibliography{refs}` directives at the end of the body.
-  3. Custom `\citet` redefinition so narrative cites emit `Author Year⁽N⁾` rather than natbib-`super` default `Author [N]` (~3-line preamble patch; verify against current natbib release).
-  4. **Source-form migration** `bin/migrate-cites <paper>`: scan segment source for `[Author Year]` patterns, fuzzy-match against `refs.bib`, replace with `\cite{key}` (parenthetical) or `\citet{key}` (narrative — detected by sentence-position context). Flag ambiguous matches (`[Hintikka 1991]` → multiple bib entries) for human disambiguation. Emit a diff for review before applying.
+  1. ✓ Add `\PassOptionsToPackage{numbers,super,sort&compress}{natbib}` to the build's preamble (`bin/build`'s `PREAMBLE_ADDITIONS` constant, or factor out to `common/preamble.tex` if the constant grows). [done — commit `c64813c`]
+  2. ✓ Add `\bibliographystyle{unsrtnat}` (citation order) + `\bibliography{refs}` directives at the end of the body. [done]
+  3. ✓ Custom `\citet` redefinition so narrative cites emit `Author Year⁽N⁾` rather than natbib-`super` default `Author [N]` (~3-line preamble patch; verify against current natbib release). [done]
+  4. **Source-form migration** `bin/migrate-cites <paper>`: scan segment source for `[Author Year]` patterns, fuzzy-match against `refs/entries/<bibkey>.yml` (via `bin/refs search` or direct), replace with `\cite{key}` (parenthetical) or `\citet{key}` (narrative — detected by sentence-position context). Flag ambiguous matches (`[Hintikka 1991]` → multiple entries) for human disambiguation. Emit a diff for review before applying. **Backend ready:** `bin/refs` provides the entry index + per-paper bib emission; `bin/migrate-cites` is the paper-segment rewriter on top.
   5. Author-side convention is captured in AUTHORING.md §2.3 (already updated 2026-05-05).
   6. Verify rendering visually on `00-test-paper` before per-paper migration. Side-by-side with the current author-year render to confirm the math-collision concern is mitigated by brackets.
   7. After per-paper migration succeeds, archive `REFS-AND-CITATIONS.md` to `_archive/` (`git mv`).
@@ -69,7 +69,24 @@ These existed in the old workspace as separate scripts; some may be subsumed by 
 
 - [ ] **E4. Supplementary-ZIP builder** (old `bin/build-supplementary`). Per-paper ZIP < 100 MB for OpenReview supplementary upload (figures, code, raw-data, extended appendices not in the 9-pp main).
 
-- [ ] **E5. Cite-audit / refs-to-bib** (old `bin/cite-audit` + `bin/refs-to-bib`). Read-only coverage audit (inline cites ↔ refs.bib) and stub-bib harvester from `## References` markdown. Useful for Phase B citation work; may also fold into the build's lint pass.
+- [ ] **E5. Cite-audit / refs-to-bib** (old `bin/cite-audit` + `bin/refs-to-bib`). Read-only coverage audit (inline cites ↔ refs.bib) and stub-bib harvester from `## References` markdown. Useful for Phase B citation work; may also fold into the build's lint pass. **Largely subsumed by `bin/refs`** — `bin/refs cited` does the coverage audit, `bin/refs lint` does the missing-key check, `bin/refs emit` does the bib generation. Stub-bib harvester from `## References` markdown remains useful for one-shot legacy migrations.
+
+## F. Citation backend — `bin/refs` (landed)
+
+The multi-agent-safe citation system at `~/src/neurips/refs/` + `bin/refs`. Source of truth is per-entry YAML (`refs/entries/<bibkey>.yml`); BibTeX is a generated artifact. Verification is append-only events at `refs/verifications/<bibkey>/*.md`. Anonymization deny-list at `refs/deny-list.yml`. See `refs/README.md` for schema + workflow.
+
+- ✓ `bin/refs` CLI with verbs: `add` / `import` / `show` / `list` / `search` / `verify` / `unverify` / `cited` / `emit` / `lint` / `pdf` / `validate`.
+- ✓ 164 entries imported from legacy `~/src/neurips2026/common/refs.bib` (`bin/refs validate` clean).
+- ✓ Anonymization deny-list at `refs/deny-list.yml` (DOIs, authors, framework / ELI proper-nouns from AUTHORING.md §3.5).
+- ✓ Concurrency story: per-entry files mean two agents adding distinct entries never collide; verification events are filename-unique (timestamp + verifier + criterion).
+
+Open follow-ups (deferred — backend is sufficient for the per-paper agents to start using it):
+
+- [ ] **F1. Build-pipeline integration.** `bin/build` could optionally call `bin/refs emit <paper-dir>` before the lualatex pass so the per-paper `refs.bib` is always derived from the current entries. Today the build reads a hand-maintained `<paper-dir>/refs.bib`; once the paper-side migration (C1.4) lands, switching to emit-on-build is one config line.
+- [ ] **F2. DOI auto-fetch** (`bin/refs fetch <doi>`). Phase 0 is paste-BibTeX-on-stdin / scaffold-and-fill. CrossRef / DataCite would let an agent verify-by-fetching.
+- [ ] **F3. Duplicate-DOI detection.** Two entries with different keys but the same DOI should surface in `bin/refs lint`. Today each is treated independently.
+- [ ] **F4. PDF-claim anchoring.** `bin/refs pdf <key> <path>` registers a PDF; nothing yet inspects content. A future `bin/refs grep <key> <claim>` would let the `claim-supported` criterion be backed by literal text-match anchors rather than free-form notes.
+- [ ] **F5. Re-verification of imported 164 entries.** The legacy bib's verification status (from `~/src/neurips2026/common/citation-verification-report.md`) is currently *unverified* in the new system. Per-paper agents will surface verification events as they encounter each entry; a one-shot import from the verification report is also possible (would attribute events to "joseph + bib-verification subagent, 2026-05-04").
 
 ---
 

@@ -1,0 +1,14 @@
+---
+title: Finite-time analysis of the multiarmed bandit problem
+journal: Machine Learning
+volume: '47'
+number: 2--3
+pages: 235--256
+year: 2002
+doi: 10.1023/A:1013689704352
+key: auer-cesa-bianchi-fischer-2002-ucb
+type: article
+authors:
+- Auer, Peter
+- Cesa-Bianchi, Nicol{\`o}
+- Fischer, Paul

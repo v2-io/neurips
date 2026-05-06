@@ -1,0 +1,12 @@
+---
+title: Near-optimal model-free RL in non-stationary episodic MDPs
+year: 2021
+booktitle: ICML
+key: mao-2021-nearoptimal
+type: inproceedings
+authors:
+- Mao, W
+- Zhang, K
+- Zhu, R
+- Simchi-Levi, D
+- Başar, T

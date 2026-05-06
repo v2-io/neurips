@@ -1,0 +1,16 @@
+---
+title: Curiosity-driven exploration by self-supervised prediction
+booktitle: Proceedings of the 34th International Conference on Machine Learning (ICML
+  2017)
+series: Proceedings of Machine Learning Research
+volume: '70'
+pages: 2778--2787
+year: 2017
+note: arXiv 1705.05363
+key: pathak-agrawal-efros-darrell-2017-icm
+type: inproceedings
+authors:
+- Pathak, Deepak
+- Agrawal, Pulkit
+- Efros, Alexei A.
+- Darrell, Trevor
