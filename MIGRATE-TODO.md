@@ -42,7 +42,7 @@ Each submodule needs the standard subdirs (per the original restructure-plan §3
 
 - [ ] **C1. Port prior-art research** from each old `<paper>/prior-art/` directory (Undermind queries + reports + positioning syntheses).
 - [ ] **C2. Port simulation code** for B-N4 — `~/src/neurips2026/01-tragedy/sim/` → `01-tragedy-confident-agent/simulations/`.
-- [ ] **C3. Port audit relics** from each old `<paper>/_archive/` to the new submodule's `_archive/`. Use `git mv` to preserve provenance where possible (will need history-rewrite incantation since the archive is moving across repos — alternatively, just commit fresh in the new repo with a note pointing to the old SHA).
+- [x] **C3. Port audit relics** — *decided 2026-05-05: do not port.* Fresh `_archive/` in each new submodule. Old workspace's `_archive/` stays as the historical record at `~/src/neurips2026/<paper>/_archive/`. See AUTHORING §8.0 strategic guidance.
 
 ## D. Doc consolidation — DONE 2026-05-05
 

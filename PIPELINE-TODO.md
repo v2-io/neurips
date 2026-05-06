@@ -33,7 +33,7 @@ The build pipeline's lint pass should warn on (or convert / strip) authoring pat
   1. ✓ Add `\PassOptionsToPackage{numbers,super,sort&compress}{natbib}` to the build's preamble (`bin/build`'s `PREAMBLE_ADDITIONS` constant, or factor out to `common/preamble.tex` if the constant grows). [done — commit `c64813c`]
   2. ✓ Add `\bibliographystyle{unsrtnat}` (citation order) + `\bibliography{refs}` directives at the end of the body. [done]
   3. ✓ Custom `\citet` redefinition so narrative cites emit `Author Year⁽N⁾` rather than natbib-`super` default `Author [N]` (~3-line preamble patch; verify against current natbib release). [done]
-  4. ✓ **Source-form migration** `bin/migrate-cites <paper-dir>`: scans `<paper-dir>/src/**/*.md` for parenthetical `[Author Year]` and narrative `Author [Year]` patterns, matches against `refs/entries/*.yml` by first-author-surname + year, prints a per-file report (matched / ambiguous / missing); `--apply` rewrites in place. Handles `et al.`, hyphenated multi-author, page references (`[Author Year, p. 247]` → `\cite[p. 247]{key}`); multi-year (`[Friston 2013, 2019]`) and complex multi-cite (`[A Year; B Year]`) are intentionally skipped by the regex so a human can pick the right form. *Done — commit pending.*
+  4. ✓ **Source-form migration** `bin/migrate-cites <paper-dir>`: scans `<paper-dir>/src/**/*.md` for parenthetical `[Author Year]` and narrative `Author [Year]` patterns, matches against `refs/entries/*.yml` by first-author-surname + year, prints a per-file report (matched / ambiguous / missing); `--apply` rewrites in place. Handles `et al.`, hyphenated multi-author, page references (`[Author Year, p. 247]` → `\cite[p. 247]{key}`); multi-year (`[Friston 2013, 2019]`) and complex multi-cite (`[A Year; B Year]`) are intentionally skipped by the regex so a human can pick the right form. *Signed off 2026-05-05 — ready for use by per-paper migration agents.*
   5. Author-side convention is captured in AUTHORING.md §2.3 (already updated 2026-05-05).
   6. Verify rendering visually on `00-test-paper` before per-paper migration. Side-by-side with the current author-year render to confirm the math-collision concern is mitigated by brackets.
   7. After per-paper migration succeeds, archive `REFS-AND-CITATIONS.md` to `_archive/` (`git mv`).
@@ -115,3 +115,31 @@ Open follow-ups (deferred — backend is sufficient for the per-paper agents to 
 ---
 
 *(No entries yet — first per-paper migration agent kicks off the queue.)*
+
+### [01-tragedy + general] meta.md → template substitution: title not replaced; abstract not kramdown-rendered — flagged 2026-05-05 by 01-tragedy migration agent
+
+**Symptom (1) — title.** The generated `out/full-paper.tex` retains `\title{Formatting Instructions For NeurIPS 2026}` at line 61 (the template's placeholder) and instead injects the meta.md title into a *comment line* at line 40 (`% Note. For the workshop paper template, both \title{Tragedy of the Confident Agent: ...} and \workshoptitle{} are required...`). Net effect: PDF shows "Formatting Instructions For NeurIPS 2026" as the title, not the paper's actual title.
+
+**Symptom (2) — abstract.** `meta.md` body is pasted into `\begin{abstract}...\end{abstract}` verbatim, with no kramdown processing. Markdown emphasis (`*foo*`), code spans (`` `foo` ``), and other inline forms render as raw markdown characters in the PDF rather than as their LaTeX equivalents (`\emph{foo}`, code-font, etc.). Reproduces in `00-test-paper` as well — abstract there has literal backticks around `01-` / `02-` / `03-`.
+
+**Context.** `bin/build` lines 684–693:
+
+```
+# Replace title
+template = template.sub(/\\title\{[^}]*\}/) { "\\title{#{meta.title}}" }
+...
+# Replace abstract
+template = template.sub(/\\begin\{abstract\}.*?\\end\{abstract\}/m) do
+  "\\begin{abstract}\n#{meta.abstract}\n\\end{abstract}"
+end
+```
+
+The title regex matches the *first* `\title{...}` in the template, which is the *empty* `\title{}` inside the workshop-template comment block (template line 40). The actual `\title{Formatting Instructions...}` directive at line 61 never gets touched.
+
+For the abstract: `meta.abstract = body.strip` (line 467) is raw text, not kramdown-rendered before splicing into the template.
+
+Reproduces on both `00-test-paper test` and `01-tragedy-confident-agent full-paper`.
+
+**Ask.** Title-replacement should target the actual `\title{}` directive (not the in-comment occurrence); options: anchor to start-of-line + skip lines beginning `%`, or match `\title{Formatting Instructions[^}]*}` explicitly, or process the template line-by-line so commented-out forms are skipped. Abstract should be run through the same kramdown→LaTeX pipeline as segment bodies before splicing — currently emphasis / code / cross-refs in the abstract don't render correctly.
+
+**Status:** OPEN

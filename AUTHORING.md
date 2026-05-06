@@ -427,7 +427,27 @@ The parser sees the leading `<` and skips; the row stays in the file as a placeh
 
 Concrete workflow when migrating a paper from the old workspace at `~/src/neurips2026/<paper>/` into a target submodule at `~/src/neurips/0N-{slug}/`. Stepwise on paper #1 with Joseph guiding; mechanical on #2 / #3.
 
-1. **Read the source.** `paper-draft.md` is the main content. `OUTLINE.md` carries the section budget + audit findings. `LOG.md` carries history. `prior-art/` carries Undermind + positioning. `sim/` (B-N4 only) carries simulation code. `_archive/` carries frozen audit relics.
+### 8.0 Answers from paper #1 migration (Joseph, 2026-05-05)
+
+Joseph's responses to first-migration-agent questions, captured so paper #2 / #3 agents have the same context. These are his answers — not principles validated through migration work. Paper #1 is the first to try this; downstream agents will refine the pattern.
+
+- **Substrate.** `long-form.md` is the content superset, but `paper-draft.md` is most correct: critical late-cycle spike-integration and audit-finding fixes typically landed only in paper-draft and were never back-ported. Joseph's recommendation: start from paper-draft (most correct) and add segments / alt-segments from long-form. The old workspace's `git log` (full messages, not `--oneline`) carries the integration narrative; `OUTLINE.md`'s todo lists help locate which fixes landed where. Long-form's outline will likely improve significantly as a side-effect.
+
+- **Iterations.** Many expected, not one-pass — Joseph's framing is "don't try to ingest everything and spit out the pieces in one go." Even the substrate merge alone (paper-draft baseline + long-form supersets), separate from formatting conversion, will probably take multiple passes per segment.
+
+- **Drive-by fixes.** Welcome where obvious, with a note in the submodule's `LOG.md` so they're traceable. The focus is parity with the paper outline; opportunistic improvement is fine, sweep-rewriting drifts off-scope.
+
+- **Trim.** Not a migration concern. If natural opportunities surface during segmentation — finer-than-per-section breaks, or two forms of a segment ("with-prose" wrapping the formal content vs. formal-content-only) — those can pay off in later trim passes. Joseph's realistic note: formatting conversion will likely fill the available attention regardless.
+
+- **Segmentation granularity.** Open question. Paper #1 is the first to try it; paper #2 / #3 inherit whatever pattern lands and refine.
+
+- **`bin/migrate-cites`.** Joseph's read as of 2026-05-05: looks like it's working. For the bulk `[Author Year]` → `\cite{key}` step.
+
+- **Old `_archive/`.** No port — fresh `_archive/` in the new submodule. Old workspace's `_archive/` stays as the historical record at `~/src/neurips2026/<paper>/_archive/`. (Supersedes MIGRATE-TODO §C3.)
+
+### 8.1 Numbered recipe
+
+1. **Read the source.** `paper-draft.md` is the main content (most correct, post-spike-integration). `long-form.md` is the content-superset (more material, possibly missing late fixes — see §8.0 substrate strategy). `OUTLINE.md` carries the section budget + audit findings. `LOG.md` carries history. `prior-art/` carries Undermind + positioning. `sim/` (B-N4 only) carries simulation code. `_archive/` carries frozen audit relics (do not port — see §8.0).
 2. **Decide segmentation boundaries.** Default: one segment per top-level section (`## 1. Introduction` → `src/01-introduction.md`). Finer where natural (long appendix subsections may want their own segment). Slugs are stable — once a segment exists at `src/intro.md`, don't rename.
 3. **Write segments** using AUTHORING conventions:
    - Theorem-shaped blocks → Obsidian callouts (§1.1).
