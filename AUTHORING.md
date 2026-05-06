@@ -111,6 +111,18 @@ $$
 The per-element product factors three considerations: ...
 ```
 
+**Display math between numbered list items — indent under the preceding item.** A markdown ordered list whose items are separated by an *un-indented* `$$...$$` block parses as *separate* enumerates each starting at item 1 — the display math acts as a list-terminating block. To keep the items in a single numbered enumerate, indent the math three spaces under the preceding item so kramdown reads it as continuation content:
+
+```
+1. First condition: log-Sobolev inequality holds with constant ρ:
+
+   $$\mathrm{Ent}_\mu(f^2) \leq \tfrac{2}{\rho}\,\mathbb{E}_\mu\|\nabla f\|^2$$
+
+2. Second condition: bounded-support concentration with diameter D.
+```
+
+Renders as a single enumerate with items 1, 2, ... numbered correctly. Without the 3-space indent on the math block, you get two separate enumerates each labeled "1." in the PDF. (An alternative — bold-prefix paragraph form `**(1) Title.**` / `**(2) Title.**` — also renders correctly and may read better when the items are paragraph-shaped rather than short-bullet-shaped; the indented-list form is the way to keep semantic-list structure.)
+
 ### 1.7 Equation numbering and reference
 
 **Authors do not type equation numbers.** Each equation gets an anchor; references use Obsidian wikilink form:
