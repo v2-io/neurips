@@ -56,7 +56,11 @@ Effort, time, and "risk-of-getting-stuck" are **false constraints** in this work
 
 Even when the strengthening attempt fails: document it. The failure record is itself epistemically valuable — it prevents future agents from re-attempting the same dead-end without new evidence. Failure spikes get archived alongside successful ones; a "failed" spike often reveals structure that points to a stronger framing later.
 
-Empirically validated this sprint: B-N4 Pass-2 cracked 6+ findings rather than softening; B-CS1 cracked 5/7; B-N8 cracked 4/5. Codex's softening recommendations consistently underestimate by a wide margin. The pattern is consistent enough that it's now a working baseline: assume the strengthening exists until you've honestly looked for it and confirmed it doesn't. *Full reasoning + worked examples:* `~/.claude/projects/-Users-josephwecker-v2-src-agentic-systems/memory/feedback_strengthen_before_soften.md`.
+Empirically validated this sprint: B-N4 Pass-2 cracked 6+ findings rather than softening; B-CS1 cracked 5/7; B-N8 cracked 4/5. Codex's softening recommendations consistently underestimate by a wide margin. The pattern is consistent enough that it's now a working baseline: assume the strengthening exists until you've honestly looked for it and confirmed it doesn't.
+
+**The principle holds especially on the small findings.** "'iff' should be downgraded to 'if'." "'Forced' is too strong; soften to 'commonly observed'." "Drop 'exact'; the result is approximate." These look low-stakes — the audit recommendation is small, the diff is small, accepting it feels frictionless. Take the strengthening pass anyway. We have been *repeatedly and pleasantly surprised* by what falls out of attempting the improbable on these — what looked like a tiny softening to be ratified usually contained a stronger claim under disambiguated quantifier scope (see `~/.claude/projects/-Users-josephwecker-v2-src/memory/feedback_quantifier_disambiguation.md` — every Pass-2 / 3 / 4 audit produced at least one finding where this move converted a recommended softening into a recovered strong reading). The temptation to skip the strengthening pass is highest exactly where the principle pays off most. ALWAYS do the strengthening pass first — however awkward, improbable, or impossible the strengthening looks.
+
+*Full reasoning + worked examples:* `~/.claude/projects/-Users-josephwecker-v2-src-agentic-systems/memory/feedback_strengthen_before_soften.md`.
 
 ### 3.2 Abundance mentality — serve truth, not a clock
 
@@ -182,6 +186,8 @@ When writing instructions, guidance docs, or sustained advice for other agents �
 The override discipline is to deliberately switch register when crossing the delegation boundary: from "specify what to do" to "set intent and posture, leave the deliberation for the agent." The value of delegation is not that the delegate has *better* judgment — it's that they have *different* judgment, AND retain the flexibility to evolve that judgment as they encounter the work. A prescriptive prompt locks in your judgment-state at the moment of writing, before the agent has seen the material. A peer-to-peer prompt preserves their orient-cascade for them to actually use.
 
 **Symptom to watch for in your own behavior.** When a first-try prompt feels too brief or too soft, the natural impulse is to *add specificity* — more bullets, more "do this / not that," more procedural steps. That impulse is the action-space substrate leaking across. The corrective is the opposite move: cut specificity, restate intent more clearly, trust the receiving agent's deliberation. If the prompt felt too soft, it was probably about right.
+
+**The catch-yourself frame, in Joseph's words:** *"You're not forgetting to be a peer — you're extruding your action-space into their deliberation-space. It's gross and unsanitary."* The visceral framing matters. "Be peer-voiced" is a rule you can fail to apply without noticing. *Extruding your action-space into someone else's deliberation-space* is a thing you can feel yourself doing — and the instinct to recoil from gross-and-unsanitary is the catch the rule alone doesn't give you. When the impulse to specify hits, the question isn't *am I being peer-voiced* — it's *am I extruding right now*.
 
 **Translations rather than rules:**
 
