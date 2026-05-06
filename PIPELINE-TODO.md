@@ -142,7 +142,7 @@ Reproduces on both `00-test-paper test` and `01-tragedy-confident-agent full-pap
 
 **Ask.** Title-replacement should target the actual `\title{}` directive (not the in-comment occurrence); options: anchor to start-of-line + skip lines beginning `%`, or match `\title{Formatting Instructions[^}]*}` explicitly, or process the template line-by-line so commented-out forms are skipped. Abstract should be run through the same kramdown→LaTeX pipeline as segment bodies before splicing — currently emphasis / code / cross-refs in the abstract don't render correctly.
 
-**Status:** OPEN
+**Status:** RESOLVED — title fixed in `e8324a7` (anchor to line-start, skips in-comment occurrences). Abstract fixed in `51b2852` (now runs through `render_inline_markdown` — same kramdown→LaTeX pipeline as segment bodies; `*emph*` / `**strong**` / `` `code` `` / smart quotes / em-dashes / `$x$` inline math all render correctly).
 
 ### [01-tragedy] Display math inside Obsidian callout fragments the callout — flagged 2026-05-05 by 01-tragedy migration agent
 
@@ -174,7 +174,7 @@ The kramdown blockquote terminates at the first `$$`, the equation-rewrite emits
 
 **Ask.** Display math `$$ ... $$ ^eq-name` (and `$$ ... $$` without anchor) should be supported inside Obsidian callouts. Implementation likely requires the parser to keep the blockquote open across display-math blocks (custom blockquote handling that recognizes `$$ ... $$` as inline content). Equivalent fix would be to recognize `> $$ ... > $$` (display math with `> ` prefix on each line) as blockquoted display math.
 
-**Status:** OPEN
+**Status:** RESOLVED-IN-`cc60154`. Architecture moved out of segment-prep regex into AST-level: kramdown parses the source (which respects blockquote structure natively), then `attach_equation_anchors!` walks the tree post-parse pairing `:math` elements with their trailing ` ^anchor` text-node siblings. `convert_math` then emits `\begin{equation}\label{}...\end{equation}` (or `\begin{align}` for `\begin{aligned}`) for anchored math. Equations now embed cleanly inside `> [!lemma]` / `> [!theorem]` / etc. callouts; the migration agent's pulled-out-equation workaround can be reverted to the natural in-statement positioning.
 
 ### [01-tragedy + 00-test-paper] Anchored-equation rewriter at segment-prep level doesn't respect codespan boundaries — flagged 2026-05-05 by 01-tragedy migration agent
 
@@ -203,7 +203,7 @@ The first equation (`^eq-exit-time`) renders broken; the second (`^eq-persistenc
 
 **Ask.** Segment-prep-level anchored-equation rewriter should respect codespan boundaries — `$$ ... $$` inside backticks shouldn't be treated as math. Implementation: scan for codespans first, mask their content, then run the `$$ ... $$ ^eq-name` rewrite over the masked text.
 
-**Status:** OPEN
+**Status:** RESOLVED-IN-`cc60154` (same architectural fix as flag above). Doing the work at the AST level lets kramdown's parser handle codespans natively — `$$...$$` inside backticks parses as code-span content, never as a math delimiter, so the next real `$$...$$ ^eq-name` is unaffected. The migration agent's [!todo] callouts containing literal `$$` examples can be moved back to segment source.
 
 ### [01-tragedy + general] Bare `|...|` in inline math `$...$` triggers kramdown table-detection — flagged 2026-05-05 by 01-tragedy migration agent
 
