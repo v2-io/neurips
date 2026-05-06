@@ -395,3 +395,35 @@ Reproduces on `03-llm-hallucinate-bound/out/full-paper.pdf` page 5 (Table 1 — 
 ```
 
 The cols attribute is a plain LaTeX column spec string — `l`/`c`/`r` for fixed-content alignment, `X` for an equal-share text-wrapping column distributed across the remaining `\textwidth`. Pipeline emits `\begin{tabularx}{\textwidth}{<cols>}` instead of `\begin{tabular}{...}` when `cols=` is present. AUTHORING.md §1.4 documents the convention. The reason for opt-in (rather than auto-detect-and-switch): natural-width tabular sizing reads better for narrow tables (column widths track content), and the migration agent can't always tell at conversion time whether the table will overflow textwidth. Per-table author judgment is cheap and explicit. Auto-detect could be layered on top later if it proves needed.
+
+### [03-llm-hallucinate-bound + general] Smart-quote conversion fails when `"` butts directly against inline-math `$` — flagged 2026-05-06 by 03-llm-hallucinate migration agent
+
+**Symptom.** Kramdown's smart-quote conversion turns straight `"` into typographic `“` `”` *unless* the quote character is directly adjacent to a `$` inline-math delimiter. In that case the straight ASCII `"` passes through to the rendered PDF, looking out of place against the surrounding curly quotes.
+
+Reproduces on phrases of the form `a "$\sigma\sqrt{2I}$" reading` — the quotes around the math span don't get smart-converted. About 11 instances across §2, §5, §6, §A, §C, §D in this paper. Common shape in theory papers: quoting a candidate phrasing that's being criticized, where the candidate phrasing is a math expression.
+
+**Workaround applied.** Source-side: use Unicode curly quotes (`“ ”`) directly in source for the math-adjacent cases. Sweeps cleanly via regex `"([^"\n]*\$[^"\n]*)"` → `“\1”`. AUTHORING §2.6 discourages curly quotes in source ("diffs become fragile, the pipeline already handles it"); the present case is one the pipeline *doesn't* handle, so the workaround diverges from policy with intent.
+
+**Ask.** Smart-quote detection should treat `$` as a word-boundary-like character so quotes adjacent to inline-math get converted normally. Likely fix in kramdown's smart-quote rule: extend the boundary-character set to include `$` (and possibly other math delimiters). Alternatively, the build's converter could post-process after kramdown's smart-quote pass and convert any straight `"` adjacent to `$` to typographic.
+
+**Status:** OPEN
+
+### [03-llm-hallucinate-bound + general] Markdown ordered list restarts at "1." after intervening display equation — flagged 2026-05-06 by 03-llm-hallucinate migration agent
+
+**Symptom.** A markdown ordered list whose items are separated by a display-math block (`$$ ... $$`) gets parsed as *two separate* `\enumerate` environments, each starting at item 1. So a list intended as
+
+```
+1. First item ...
+$$equation$$
+2. Second item ...
+```
+
+renders in the PDF as two items both numbered "1." instead of "1." and "2.".
+
+Reproduces on `03-llm-hallucinate-bound/src/06-discussion.md` §6.4 (Conditions 1+2 for (H_κ)) and `src/B-hypothesis-verification.md` §B.3 (the same Conditions 1+2 reproduced for the appendix). The display equations between items are the chain-rule MI inequalities that load-bear for the conditions.
+
+**Workaround applied.** Source-side: replaced markdown ordered-list items with bold-paragraph form `**(1) Title.**` ... `**(2) Title.**` ... — these become `\paragraph{(1) Title}` via AUTHORING §1.9, with the numbering carried in the paragraph head text. Loses semantic-list structure but renders correctly; a per-paper-agent rewrite to combine the items into a single enumerate (with equations inlined as `\,` etc.) would be cleaner if anyone touches the section.
+
+**Ask.** Kramdown's ordered-list parser should treat display math as part of the list-item content (or at least as a soft break that doesn't terminate the enumerate). Standard markdown allows blank-line-separated paragraphs within a list item under sufficient indentation; kramdown might already support this with the right indentation pattern, but the AUTHORING-typical form (display math as a top-level block, not indented) doesn't trigger it. Pipeline-side options: (a) detect display math between consecutive numbered list items and emit a single enumerate spanning them; (b) document the indentation pattern in AUTHORING that keeps a list together across display equations. Either would let authors keep the semantic-list form.
+
+**Status:** OPEN
