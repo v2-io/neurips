@@ -1,0 +1,181 @@
+\documentclass[11pt]{article}
+
+
+
+\usepackage[final, babel]{microtype}
+\usepackage{fullpage}
+\usepackage{algorithm,algorithmicx} % pseudocode support
+\usepackage[noend]{algpseudocode}
+\usepackage{amsmath,amsthm,amsfonts,amssymb}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage{mathrsfs}
+\usepackage{enumitem}
+\usepackage{bm}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{makecell}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{caption}
+\usepackage{thmtools}
+\usepackage{thm-restate}
+\usepackage{hhline}
+\usepackage[table]{xcolor}
+\definecolor{light-gray}{gray}{0.9}
+
+\include{notations}
+\usepackage{times}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{property}[theorem]{Property}
+\newtheorem{claim}{Remark}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{assumption}{Assumption}
+\renewcommand*{\theassumption}{\Alph{assumption}}
+
+% \usepackage{refcheck}
+
+
+
+\def\##1\#{\begin{align}#1\end{align}}
+\def\$#1\${\begin{align*}#1\end{align*}}
+
+
+
+\let\hat\widehat
+\let\tilde\widetilde
+\let\check\widecheck
+\def\given{{\,|\,}}
+\def\biggiven{{\,\big|\,}}
+\def\Biggiven{{\,\Big|\,}}
+\def\bigggiven{{\,\bigg|\,}}
+\def\Bigggiven{{\,\Bigg|\,}}
+\def\ds{\displaystyle}
+\newcommand\wtilde{\stackrel{\sim}{\smash{\mathcal{W}}\rule{0pt}{1.1ex}}}
+
+ 
+
+% \usepackage{refcheck}
+\usepackage[numbers]{natbib}
+
+\begin{document}
+
+
+\title{\textbf{Provably Efficient Reinforcement Learning with Linear Function Approximation}}
+
+\newcommand{\authorname}[1]{\makebox[6cm][c]{#1}}
+
+\author{Chi Jin \\ University of California, Berkeley \\ \texttt{chijin@cs.berkeley.edu}
+\and 
+Zhuoran Yang \\ Princeton University \\ \texttt{zy6@princeton.edu}
+\and
+Zhaoran Wang \\ Northwestern University \\ \texttt{zhaoranwang@gmail.com}
+\and
+Michael I. Jordan \\ University of California, Berkeley \\ \texttt{jordan@cs.berkeley.edu}}
+
+% \date{May 19, 2018\\
+% \medskip
+% \normalsize (version 1)}
+\date{}
+
+\maketitle
+
+\newcommand{\cnote}{\textcolor[rgb]{1,0,0}{Chi: }\textcolor[rgb]{1,0,1}}
+\newcommand{\wnote}{\textcolor[rgb]{1,0,0}{Zhaoran: }\textcolor[rgb]{0,1,1}}
+\newcommand{\znote}{\textcolor[rgb]{1,0,0}{Zhuoran: }\textcolor[rgb]{0, 0.5, 1}}
+
+
+\newcommand{\ind}[3]{{#1}^{#2}_{#3}} % V^k_h
+\newcommand{\sind}[3]{{#1}^{#2}_{#3}} % special for V^\star_h, V^\pi_h
+\newcommand{\empP}[2]{\hat{\mathbb{P}}^{#1}_{#2}}
+\newcommand{\VV}{\mathbb{V}}
+\newcommand{\empVV}[2]{\hat{\mathbb{V}}^{#1}_{#2}}
+\newcommand{\logt}{\iota}
+\newcommand{\cF}{\mathcal{F}}
+\newcommand{\fN}{\mathfrak{N}}
+\newcommand{\fM}{\mathfrak{M}}
+\newcommand{\Ea}{\E_{a^\star}}
+\newcommand{\Pa}{\P_{a^\star}}
+\newcommand{\done}{\mathbb{I}}
+\newcommand{\bphi}{\bm{\phi}}
+\newcommand{\bpsi}{\bm{\psi}}
+\newcommand{\bmu}{\bm{\mu}}
+
+\newcommand{\bu}{\bm{u}}
+\newcommand{\bv}{\bm{v}}
+\newcommand{\btheta}{\bm{\theta}}
+\newcommand{\bPhi}{\bm{\Phi}}
+\newcommand{\bPsi}{\bm{\Psi}}
+\newcommand{\fE}{\mathfrak{E}}
+\newcommand{\la}{\langle}
+\newcommand{\ra}{\rangle}
+
+
+
+
+\begin{abstract}
+Modern Reinforcement Learning (RL) is commonly applied to practical problems with an enormous number of states, where \emph{function approximation} must be deployed to approximate either the value function or the policy. The introduction of function approximation raises a fundamental set of challenges involving computational and statistical efficiency, especially given the need to manage the exploration/exploitation tradeoff. As a result, a core RL question remains open: how can we design provably efficient RL algorithms that incorporate function approximation? This question persists even in a basic setting with linear dynamics and linear rewards, for which only linear function approximation is needed. 
+
+% where the underlying model has a linear structure so that only linear function approximation are needed.
+% with both linear reward and model of dynamics. 
+
+% even in the setting with both linear reward and model of dynamics. 
+
+%Whether provably efficient RL algorithms can be designed under function approximation is a fundamental RL question, but remains open even in a basic setting where the value function class is restricted to be linear, and the underlying model is assumed to have a linear structure.
+
+This paper presents the first provable RL algorithm with both polynomial runtime and polynomial sample complexity in this linear setting,
+% such a basic yet fundamental linear setting, 
+without requiring a ``simulator'' or additional assumptions. Concretely, we prove that an optimistic modification of Least-Squares Value Iteration (LSVI)---a classical algorithm frequently studied in the linear setting---achieves $\tilde{\mathcal{O}}(\sqrt{d^3H^3T})$ regret, where $d$ is the ambient dimension of feature space, $H$ is the length of each episode, and $T$ is the total number of steps. Importantly, such regret is independent of the number of states and actions.
+% 1. function approximation + exploration;
+% 2. independent of the number of states. 
+
+% \begin{itemize}
+% \item Sample complexity --  regret
+% \item Why do we need linear assumption. 
+% \end{itemize}
+\end{abstract}
+
+
+\input{intro}
+
+\input{related}
+
+\input{setting}
+
+\input{results}
+
+\input{mechanism}
+
+% \input{necess}
+
+\input{conclu}
+
+\section*{Acknowledgements}
+We thank Alekh Agarwal, Zeyuan Allen-Zhu, Sebastian Bubeck, Nan Jiang and Akshay Krishnamurthy for valuable discussions.  This work was supported in part by the DARPA program on Lifelong Learning Machines.  
+
+\bibliographystyle{abbrvnat}
+\bibliography{rl_ref}
+
+\newpage
+
+\appendix
+
+\input{properties}
+
+\input{proofs}
+
+\input{proofs_mis}
+
+\input{app}
+
+\end{document} 

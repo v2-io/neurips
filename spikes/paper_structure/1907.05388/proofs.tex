@@ -1,0 +1,296 @@
+%!TEX root = mainQlin.tex
+
+
+\section{Proof of Theorem \ref{thm:main}} \label{app:proof_main}
+
+In this section, we prove Theorem \ref{thm:main}. We first introduce the notation that is used throughout this section. Then, we present lemmas and their proofs. Finally, we combine the lemmas to prove Theorem \ref{thm:main}.
+
+\paragraph{Notation:} Throughout this section, we denote $\Lambda_h^k$, $\w^k_h$, and $Q_h^k$ as the parameters and the Q-value function estimate in episode $k$. 
+Denote value function $V_h^k$ as $V_h^k(x) = \max_a Q_h^k(x, a)$. We also denote $\pi_k$ as the greedy policy induced by $\{Q_h^k\}_{h=1}^H$.
+To simplify our presentation, we always denote $\bphi^k_h \defeq \bphi(x^{k}_h, a^{k}_h)$.
+
+First, we prove two lemmas which state that the linear weights $\w_h$ in both the action-value functions and Algorithm \ref{algo:LSVI-UCB} are bounded. 
+
+\begin{lemma}[Bound on Weights of Value Functions] \label{lem:wn_policy}
+Under Assumption \ref{assumption:linear}, for any fixed policy $\pi$, let $\{\w^{\pi}_h\}_{h\in[H]}$ be the corresponding weights such that $Q_h^\pi(x, a) = \la\bphi (x, a),  \w^{\pi}_h\ra$ for all $(x, a, h) \in \cS\times\cA\times[H]$. Then, we have
+\begin{equation*}
+\forall h \in [H], \quad \norm{\w^\pi_h} \le 2H\sqrt{d}.
+\end{equation*}
+\end{lemma}
+
+\begin{proof}
+By the  Bellman equation  in Eq.~\eqref{eq:bellman}, we know, for any $h\in[H]$:
+\begin{equation*}
+\sind{Q}{\pi}{h}(x, a) = (r_h + \P_h \sind{V}{\pi}{h+1})(x, a). 
+\end{equation*}
+Since MDP is linear, by definition, this gives:
+\begin{equation*}
+\w^\pi_h = \btheta_h  + \int V^\pi_{h+1}(x') \dd \bmu_h (x').
+\end{equation*}
+Under the normalization conditions of Assumption \ref{assumption:linear}, the reward at each step is in $[0, 1]$, thus $V^\pi_{h+1}(x') \le H$ for any state $x'$. Therefore, $\norm{\btheta_h} \le \sqrt{d}$, and $\norm{\int V^\pi_{h+1}(x') \dd \bmu_h (x')} \le H\sqrt{d}$, which finishes the proof.
+\end{proof}
+
+\begin{lemma}[Bound on Weights in Algorithm]\label{lem:wn_estimate}
+For any $(k, h) \in [K] \times [H]$, the weight $\w^k_h$ in Algorithm \ref{algo:LSVI-UCB} satisfies:
+\begin{equation*}
+\norm{\w^k_h} \le 2H \sqrt{dk/\lambda}.
+% 2Hk/\lambda.
+\end{equation*}
+\end{lemma}
+
+\begin{proof}
+For any vector $\v \in \R^d$, we have
+\begin{align*}
+|\v\trans \w^k_h| & = |\v\trans (\Lambda^k_h)^{-1} \sum_{\tau=1}^{k-1} \bphi^\tau_h [r(x^{\tau}_h, a^{\tau}_h) + \max_a Q_{h+1}(x^{\tau}_{h+1}, a)]|\\
+& \le \sum_{\tau = 1}^{k-1}  |\v\trans (\Lambda^k_h)^{-1} \bphi^\tau_h| \cdot 2H 
+\le \sqrt{ \bigg[ \sum_{\tau = 1}^{k-1}  \v\trans (\Lambda^k_h)^{-1}\v\bigg]  \cdot \biggl [ \sum_{\tau = 1}^{k-1}  (\bphi^\tau_h)\trans (\Lambda^k_h)^{-1}\bphi^\tau_h\bigg] } \cdot 2H\\
+% & \le \norm{\Lambda_h^{-1}} \sum_{\tau=1}^k \norm{\bphi(x^{\tau}_h, a^{\tau}_h)} |r(x^{\tau}_h, a^{\tau}_h) + \max_a Q_{h+1}(x^{\tau}_{h+1}, a)|
+& \le 2H \norm{\v}\sqrt{dk/\lambda}, 
+\end{align*}
+where the last step is due to Lemma \ref{lem:basic_ineq}. The remainder of the proof follows from the fact that 
+$\norm{\w^k_h} = \max_{\v:\norm{\v} = 1} |\v\trans \w^k_h|$.
+% By algorithm, we know
+% \begin{align*}
+% \norm{\w^k_h} & = \norm{\Lambda_h^{-1} \sum_{\tau=1}^k \bphi(x^{\tau}_h, a^{\tau}_h) [r(x^{\tau}_h, a^{\tau}_h) + \max_a Q_{h+1}(x^{\tau}_{h+1}, a)]}\\
+% & \le \norm{\Lambda_h^{-1}} \sum_{\tau=1}^k \norm{\bphi(x^{\tau}_h, a^{\tau}_h)} |r(x^{\tau}_h, a^{\tau}_h) + \max_a Q_{h+1}(x^{\tau}_{h+1}, a)|
+% \le 2Hk/\lambda
+% \end{align*}
+% This finishes the proof.
+\end{proof}
+
+Second, we present our main concentration lemma, which is crucial in controlling the fluctuations in least-squares value iteration.
+% one of our key lemmas, which gives concentration inequality on following quantity, which is related to self-normalized process.
+\begin{lemma} \label{lem:stochastic_term}
+Under the setting of Theorem \ref{thm:main}, let $c_{\beta}$ be the constant in our definition of $\beta$ (i.e., $\beta = c_{\beta} \cdot dH \sqrt{\logt}$).
+There exists an absolute constant $C$ that is independent of $c_{\beta}$ such that for any fixed $p\in[0, 1]$, if we let $\fE$ be the event that:
+\begin{equation*}
+\forall (k, h)\in [K]\times [H]: \quad \norm{\sum_{\tau = 1}^{k-1} \bphi^\tau_h [V^{k}_{h+1}(x^\tau_{h+1}) - \P_h V^{k}_{h+1}(x_h^\tau, a_h^\tau)]}_{(\Lambda^k_h)^{-1}}
+\le C\cdot dH\sqrt{\chi}, 
+\end{equation*}
+where $\chi = \log [2(c_\beta+1)dT/p]$, then $\P(\fE) \ge 1-p/2$.
+\end{lemma}
+\begin{proof}
+% This Lemma basically follows from Lemma \ref{lem:wn_estimate}, Lemma \ref{lem:self_norm_covering} and Lemma \ref{lem:covering_number}.
+% Specifically, note that, 
+For all $(k, h) \in [K] \times [H]$, by Lemma \ref{lem:wn_estimate} we have $\| \w_h^k \| \leq 2 H \sqrt{dk / \lambda } $. 
+In addition, by the construction of $\Lambda_{h}^k$, the minimum   eigenvalue of $\Lambda_h^k$ is lower  bounded by $  \lambda$. Thus, by combining Lemmas \ref{lem:self_norm_covering} and \ref{lem:covering_number}, we have for any fixed $\epsilon>0$ that:
+\#\label{eq:combine1}
+& \norm{\sum_{\tau = 1}^{k-1} \bphi^\tau_h [V^{k}_{h+1}(x^\tau_{h+1}) - \P_h V^{k}_{h+1}(x_h^\tau, a_h^\tau)]}_{(\Lambda^k_h)^{-1}} ^2 \\
+& \qquad \leq 4H^2 \left[  \frac{d}{2}\log\bigg(\frac{k+\lambda}{\lambda} \bigg) + d  \log \bigg(1+ \frac{8H \sqrt{dk }} {\epsilon\sqrt{\lambda} } \bigg) + d^2 \log \bigg( 1 +  \frac{8 d^{1/2}\beta^2 } {\epsilon^2\lambda}  \bigg)  + \log\bigg(\frac{2}{p}\bigg) \right] + \frac{8k^2\epsilon^2}{\lambda} . \notag 
+\#
+Notice that we choose the hyperparameters $\lambda = 1$ and $\beta = C \cdot d H \logt $ where $C$ is an absolute constant. Finally, picking $\epsilon = dH/k$, by Eq.~\eqref{eq:combine1}, there exists a absolute constant $C > 0$ that is independent of $c_\beta$ such that 
+\$
+\norm{\sum_{\tau = 1}^{k-1} \bphi^\tau_h [V^{k}_{h+1}(x^\tau_{h+1}) - \P_h V^{k}_{h+1}(x_h^\tau, a_h^\tau)]}_{(\Lambda^k_h)^{-1}} ^2  \leq C \cdot d^2  H^2 \log [2(c_\beta+1)dT/p],
+\$ 
+which concludes the proof. %\cnote{TODO: fill in more details.}
+\end{proof}
+
+Next, we recursively bound the difference between the value function maintained in Algorithm \ref{algo:LSVI-UCB} (without bonus) and the true value function of any policy $\pi$. We bound this difference using their expected difference at next step, plus a error term. This error term can be upper bounded by our bonus with high probability. This is the key technical lemma in this section.
+
+\begin{lemma}\label{lem:basic_relation}
+There exists an absolute constant $c_\beta$ such that for $\beta = c_\beta \cdot dH\sqrt{\logt}$ where $\logt = \log (2dT/p)$, and
+for any fixed policy $\pi$, on the event $\fE$ defined in Lemma \ref{lem:stochastic_term}, we have for all $(x, a, h, k) \in \cS\times\cA\times[H]\times[K]$ that:
+\begin{equation*}
+\la\bphi(x, a), \w^k_h\ra - Q_h^\pi(x, a)  =  \P_h (V^{k}_{h+1} - V^{\pi}_{h+1})(x, a) + \Delta^k_h(x, a),
+\end{equation*}
+for some $\Delta^k_h(x, a)$ that satisfies $|\Delta^k_h(x, a)| \le \beta \sqrt{\bphi(x, a)\trans (\Lambda^k_h)^{-1}  \bphi(x, a)}$.
+\end{lemma}
+
+\begin{proof}
+By Proposition \ref{prop:realizable} and the Bellman equation Eq.~\eqref{eq:bellman}, we know for any $(x, a, h) \in \cS \times \cA \times [H]$:
+
+\begin{equation*}
+Q^\pi_h(x, a) \defeq  \la \bphi(x, a), \w^\pi_h\ra = (r_h + \P_h \sind{V}{\pi}{h+1})(x, a). 
+\end{equation*}
+This gives:
+\begin{align*}
+\w^k_h -  \w^\pi_h
+&= (\Lambda^k_h)^{-1} \sum_{\tau = 1}^{k-1} \bphi^\tau_h [r^\tau_h + V^{k}_{h+1}(x^\tau_{h+1})]- \w^\pi_h  \\
+&= (\Lambda^k_h)^{-1} \bigg \{-\lambda \w^\pi_h + \sum_{\tau = 1}^{k-1} \bphi^\tau_h \bigl [V^{k}_{h+1}(x^\tau_{h+1}) - \P_h \sind{V}{\pi}{h+1}(x_h^\tau, a_h^\tau) \bigr ]\bigg\} \\
+&= \underbrace{-\lambda (\Lambda^k_h)^{-1} \w^\pi_h}_{\q_1} + 
+\underbrace{(\Lambda^k_h)^{-1} \sum_{\tau = 1}^{k-1} \bphi^\tau_h \big [V^{k}_{h+1}(x^\tau_{h+1}) - \P_h V^{k}_{h+1}(x_h^\tau, a_h^\tau)\big ]}_{\q_2} \\
+&\quad + \underbrace{(\Lambda^k_h)^{-1}\sum_{\tau = 1}^{k-1} \bphi^\tau_h \P_h (V^{k}_{h+1} - V^\pi_{h+1})(x_h^\tau, a_h^\tau)}_{\q_3}. 
+\end{align*}
+Now, we bound the terms on the right-hand side individually.
+For the first term,
+\begin{equation*}
+|\la \bphi(x, a), \q_1\ra| = |\lambda \la \bphi(x, a), (\Lambda^k_h)^{-1} \w^\pi_h\ra|
+\le \sqrt{\lambda} \norm{\w_h^\pi} \sqrt{\bphi(x, a)\trans (\Lambda^k_h)^{-1}  \bphi(x, a)}. 
+\end{equation*}
+For the second term, given the event $\fE$ defined in Lemma \ref{lem:stochastic_term}, we have:
+\begin{equation*}
+|\la \bphi(x, a), \q_2\ra| \le c_0\cdot dH\sqrt{\chi} \sqrt{\bphi(x, a)\trans (\Lambda^k_h)^{-1}  \bphi(x, a)} 
+\end{equation*}
+for an absolute constant $c_0$ independent of $c_\beta$, and $\chi = \log [2(c_\beta+1)dT/p]$. For the third term,
+\begin{align*}
+\la \bphi(x, a), \q_3\ra &= \bigg \la \bphi(x, a), (\Lambda^k_h)^{-1}\sum_{\tau = 1}^{k-1} \bphi^\tau_h \P_h (V^{k}_{h+1} - V^\pi_{h+1})(x_h^\tau, a_h^\tau) \bigg \ra\\
+&=\bigg \la \bphi(x, a), (\Lambda^k_h)^{-1}\sum_{\tau = 1}^{k-1} \bphi^\tau_h (\bphi^\tau_h)\trans \int (V^{k}_{h+1} - V^\pi_{h+1})(x') \dd \bmu_h(x')\bigg\ra\\
+&= \underbrace{\bigg \la \bphi(x, a), \int (V^{k}_{h+1} - V^\pi_{h+1})(x') \dd \bmu_h(x')\bigg \ra}_{p_1}
+\underbrace{-\lambda \bigg\la \bphi(x, a), (\Lambda^k_h)^{-1}\int (V^{k}_{h+1} - V^\pi_{h+1})(x') \dd \bmu_h(x') \bigg\ra}_{p_2}, 
+% &= \P_h (V^{k}_{h+1} - V^\star_{h+1})(x, a) -\lambda \la \bphi(x, a), (\Lambda^k_h)^{-1}\int (V^{k}_{h+1} - V^\star_{h+1})(x') \dd \bmu(x') \ra
+\end{align*}
+where, by Eq.~\eqref{eq:linear_transition}, we have
+\begin{align*}
+p_1 = \P_h (V^{k}_{h+1} - V^\pi_{h+1})(x, a),  \qquad 
+|p_2|  
+% \ge \sqrt{\lambda} \norm{\int (V^{k}_{h+1} - V^\star_{h+1})(x') \dd \bmu(x')} \sqrt{\bphi(x, a)\trans (\Lambda^k_h)^{-1}  \bphi(x, a)}
+\le 2 H \sqrt{d\lambda} \sqrt{\bphi(x, a)\trans (\Lambda^k_h)^{-1}  \bphi(x, a)}.
+\end{align*}
+Finally, since $\la\bphi(x, a), \w^k_h\ra - Q_h^\pi(x, a) = \la \bphi(x, a), \w^k_h - \w^\pi_h\ra =\la \bphi(x, a), \q_1 + \q_2 + \q_3\ra$, by Lemma \ref{lem:wn_policy} and our choice of parameter $\lambda$, we have
+\begin{equation*}
+|\la\bphi(x, a), \w^k_h\ra - Q_h^\pi(x, a)  -  \P_h (V^{k}_{h+1} - V^{\pi}_{h+1})(x, a)| \le c' \cdot dH\sqrt{\chi} \sqrt{\bphi(x, a)\trans (\Lambda^k_h)^{-1}  \bphi(x, a)},
+\end{equation*}
+for an absolute constant $c'$ independent of $c_{\beta}$. Finally, to prove this lemma, we only need to show that there exists a choice of absolute constant $c_\beta$ so that 
+\begin{equation} \label{eq:choice_beta_constant}
+c' \sqrt{\iota + \log(c_\beta + 1)} \le c_\beta \sqrt{\iota},
+\end{equation}
+where $\iota = \log (2dT/p)$. We know $\iota \in [\log 2, \infty)$ by its definition, and $c'$ is an absolute constant independent of $c_\beta$. Therefore, we can pick an absolute constant $c_\beta$ which satisfies 
+$c'\sqrt{\log 2 + \log(c_\beta + 1)} \le c_\beta \sqrt{\log 2}$. This choice of $c_\beta$ will make Eq.~\eqref{eq:choice_beta_constant} hold for all $\iota \in [\log 2, \infty)$, which finishes the proof.
+% Finally, recall we choose $\beta=c \cdot dH\sqrt{\logt}$ for some absolute constant $c$. Pick $c \ge c'$, we finish the proof.
+\end{proof}
+
+Lemma \ref{lem:basic_relation} implies that by adding appropriate bonuses, $Q^k_h$ in Algorithm \ref{algo:LSVI-UCB} can be always an upper bound of $Q^\star_h$ with high confidence. 
+% This is also why it is called UCB bonus.
+
+\begin{lemma}[UCB] \label{lem:UCB}
+Under the setting of Theorem \ref{thm:main}, on the event $\fE$ defined in Lemma \ref{lem:stochastic_term}, we have $Q^k_h(x, a) \ge Q^\star_h(x, a)$ for all $(x, a, h, k) \in \cS\times\cA\times[H]\times[K]$.
+\end{lemma}
+
+\begin{proof}
+% \cnote{Notes in plan.pdf, Be careful about initialization condition (needs to work out)}
+We prove this lemma by induction. 
+
+First, we prove the base case, at the last step $H$.  The statement holds because $Q^k_H(x, a) \ge Q^\star_H(x, a)$. Since the value function at $H+1$ step is zero, by Lemma \ref{lem:basic_relation}, we have:
+\begin{equation*}
+|\la\bphi(x, a), \w^k_H\ra - Q_H^\star(x, a)| \le \beta \sqrt{\bphi(x, a)\trans (\Lambda^k_H)^{-1}  \bphi(x, a)}.
+\end{equation*}
+Therefore, we know:
+\begin{equation*}
+Q_H^\star(x, a) \le \min\{\la\bphi(x, a), \w^k_H\ra + \beta\sqrt{\bphi(x, a)\trans (\Lambda^k_H)^{-1}  \bphi(x, a)}, H\} = Q^k_H(x, a).
+\end{equation*}
+Now, suppose the statement holds true at step $h+1$ and consider step $h$. Again, by Lemma \ref{lem:basic_relation}, we have:
+\begin{equation*}
+|\la\bphi(x, a), \w^k_h\ra - Q_h^\star(x, a) -  \P_h (V^{k}_{h+1} - V^{\star}_{h+1})(x, a)| \le \beta \sqrt{\bphi(x, a)\trans (\Lambda^k_h)^{-1}  \bphi(x, a)}.
+\end{equation*}
+By the induction assumption that $\P_h (V^{k}_{h+1} - V^{\star}_{h+1})(x, a) \ge 0$, we have:
+\begin{equation*}
+Q_h^\star(x, a) \le \min\{\la\bphi(x, a), \w^k_h\ra + \beta\sqrt{\bphi(x, a)\trans (\Lambda^k_h)^{-1}  \bphi(x, a)}, H\} = Q^k_h(x, a),
+\end{equation*}
+which concludes the proof. 
+\end{proof}
+
+Lemma \ref{lem:basic_relation} also easily transforms to a recursive formula for $\delta^k_h = V^k_h(x^{k}_{h}) - V^{\pi_k}_h(x^{k}_{h})$. This formula will be very useful in proving the main theorem.
+
+\begin{lemma}[Recursive formula]\label{lem:recursive}
+Let $\delta^k_h = V^k_h(x^{k}_{h}) - V^{\pi_k}_h(x^{k}_{h})$, and $\zeta^k_{h+1} = 
+\E[\delta^k_{h+1}|x^{k}_h, a^{k}_h] - \delta_{h+1}^k$. Then, on the event $\fE$ defined in Lemma \ref{lem:stochastic_term}, we have the following for any $(k, h)\in [K]\times [H]$:
+\begin{equation*}
+% V^k_h(x^{k+1}_{h}) - V^{\pi_k}_h(x^{k+1}_{h})
+% \le V^k_h(x^{k+1}_{h}) - V^{\pi_k}_h(x^{k+1}_{h})
+\delta^k_h \le \delta^k_{h+1} + \zeta^k_{h+1} + 2\beta\sqrt{(\bphi^{k}_h)\trans (\Lambda^k_h)^{-1}  \bphi^{k}_h}. 
+\end{equation*}
+% \cnote{Note this is correct because our analysis uses uniform convergence and is loose in $d$, so $\beta$ is large, verify the correctness of this lemma.}
+\end{lemma}
+
+\begin{proof} By Lemma \ref{lem:basic_relation} we have that for any $(x, a, h, k) \in \cS \times \cA \times [H] \times [K]$:
+\begin{equation*}
+Q^k_h(x, a) - Q^{\pi_k}_h(x, a)
+\le \P_h (V^{k}_{h+1} - V^{\pi_k}_{h+1})(x, a)
++ 2\beta \sqrt{\bphi(x, a)\trans (\Lambda^k_h)^{-1}  \bphi(x, a)}
+\end{equation*}
+and finally, by Algorithm \ref{algo:LSVI-UCB} and the definition of $V^{\pi_k}$ we have
+$$\delta^k_h = Q^k_h(x^{k}_h, a^{k}_h) - Q^{\pi_k}_h(x^{k}_h, a^{k}_h), $$
+which finishes the proof.
+\end{proof}
+
+Finally, we are ready to prove the main theorem. We restate our main theorem as follows.
+
+\THMmain*
+
+\begin{proof}
+
+We use the notion of $\delta^k_h$ and $\zeta_{h}^k$ as in Lemma \ref{lem:recursive}.
+	% We define $\delta^k_h = V^k_h(x^{k}_{h}) - V^{\pi_k}_h(x^{k}_{h})$ to simplify the notation. 
+	We condition on the event  $\fE$ defined in Lemma \ref{lem:stochastic_term} with $\delta = p/2$.  By   Lemmas \ref{lem:UCB} and   \ref{lem:recursive}, we have
+\begin{align}\label{eq:final1}
+\text{Regret}(K) & =  \sum_{k=1}^{K} \left[\sind{V}{\star}{1} (\ind{x}{k}{1}) - \sind{V}{\pi_k}{1} (\ind{x}{k}{1})\right]
+\le \sum_{k=1}^{K} \delta^k_1 \le \sum_{k=1}^{K}\sum_{h=1}^H  \zeta^k_{h} + 2\beta \sum_{k=1}^{K}\sum_{h=1}^H \sqrt{(\bphi^{k}_h)\trans (\Lambda^k_h)^{-1}  \bphi^{k}_h}.
+\end{align}
+We now bound the two terms on the right-hand side of Eq.~\eqref{eq:final1} separately. 
+For the first term, since the computation of $V_h^k$ is independent of the new observation $x^k_h$ at episode $k$, we obtain that $\{ \zeta^k_{h}  \}$ is a martingale difference sequence satisfying $| \zeta^k_{h} | \le 2H$ for all $(k,h)$. 
+Therefore, by the Azuma-Hoeffding inequality, for any $t > 0$, we have 
+\$
+\P \biggl (   \sum_{k=1}^{K}\sum_{h=1}^H  \zeta^k_{h}   > t \biggr ) \geq \exp \bigg (   \frac{- t^2 } { 2 T \cdot H^2 } \bigg ).
+\$
+Hence, with probability at least $1 -p / 2$,  we have 
+\#\label{eq:final2}
+  \sum_{k=1}^{K}\sum_{h=1}^H  \zeta^k_{h}  \leq  \sqrt{2 T H^2 \cdot \log ( 2 / p)} \leq 2 H  \sqrt{ T\logt}, 
+  \#
+  where $\logt = \log (2dT/p)$. 
+  Furthermore, for the second term, note that the minimum eigenvalue of $\Lambda_{h}^k$ is at least $\lambda$ (which equals to 1) for all $(k, h) \in [K] \times [H]$. Also notice that $\| \bphi_h^k \| \leq 1$. 
+  By Lemma \ref{lemma:telescope}, for any $h \in [H]$, we have
+ \begin{equation*}
+ \sum_{k =1}^K   (\bphi^{k}_h)\trans (\Lambda^k_h)^{-1}  \bphi^{k}_h \leq  
+  2\log \left[\frac{\det (\Lambda_h^{k+1} )}{\det (\Lambda_h^1)}\right]. 
+ \end{equation*}
+  Moreover, note that $\|\Lambda^{k+1}_h\| = \|\sum_{\tau=1}^k \bphi^k_h (\bphi^k_h) \trans + \lambda \I\| \le \lambda + k$; this gives
+  \#\label{eq:final08}
+  \sum_{k =1}^K   (\bphi^{k}_h)\trans (\Lambda^k_h)^{-1}  \bphi^{k}_h  \le 2d \log \left[\frac{\lambda + k}{\lambda}\right]
+  \le 2d \logt. 
+  \#
+  Now, by the Cauchy-Schwartz inequality, we have
+  % notice that  the trace of $\Lambda_h^{k+1} $ is bounded by $\tr(V_h^1) + K = \lambda \cdot d + K$. Let $\{ \lambda_j (\Lambda_h^{k+1} ) \}_{j \in [d] } $ be  the eigenvalues of $\Lambda_h^{k+1}$. By the AM-GM inequality, it holds that 
+  % \$
+  % \det (\Lambda_h^{k+1} ) = \prod_{j =1}^d   \lambda_j(\Lambda_h^{k+1} )     \leq \biggl [ \frac{1}{d}   \sum_{j=1}^d \lambda_j(\Lambda_h^{k+1} ) \biggr ] ^d = \bigl [ \tr(  \Lambda_h^{k+1}) / d \bigr ]^d \leq ( \lambda + K/d)^d , 
+  % \$
+  % which further implies that 
+  % \#\label{eq:final7}
+  % \logdet (\Lambda_h^{k+1} ) \leq d \log ( \lambda + K / d) \leq d \cdot  \logt.
+  % \#
+  % Therefore, combining \eqref{eq:final03} and \eqref{eq:final7},  we have 
+  \#\label{eq:final8}
+  \sum_{k=1}^{K} \sum_{h=1}^H  \sqrt{(\bphi^{k}_h)\trans (\Lambda^k_h)^{-1}  \bphi^{k}_h}   \leq \sum_{h=1}^H  \sqrt{K} \cdot \biggl [ \sum_{k=1}^K (\bphi^{k}_h)\trans (\Lambda^k_h)^{-1}  \bphi^{k}_h \biggl] ^{1/2 } \leq  H \cdot \sqrt{ 2 dK \logt} , 
+  \#
+  which yields an upper bound on the second term in Eq.~\eqref{eq:final1}. Finally, combining Eq.~\eqref{eq:final1}, Eq.~\eqref{eq:final2}, Eq.~\eqref{eq:final8}, and with our choice of $\beta = c \cdot dH\sqrt{\logt}$ for some absolute constant c, we conclude that with probability $1-p$:
+  \$
+  \text{Regret}(K)  \leq 2 H \sqrt{T \logt} +  \beta H\sqrt{ 2 dK \logt}  \le c' \cdot \sqrt{d^3 H^3 T \logt^2},
+  \$
+  for some absolute constant $c'$. This concludes the proof.
+  \end{proof}
+
+
+%   with probability at least $1- p$. Therefore, we conclude the proof.
+%     \iffalse
+%   which implies that 
+%   \#\label{eq:final3}
+%   (\bphi^{k}_h)\trans (\Lambda^k_h)^{-1}  \bphi^{k}_h \leq \lambda^{-1} \cdot \|   \bphi^{k}_h \|^2 \leq \lambda^{-1} \leq 1, \qquad  \forall (k, h) \in [K] \times [H]. 
+%   \#
+
+% Besides, for any $(k, h) \in [K] \times [H]$, by the definition of $\Lambda_h^k$, we have 
+% \#\label{eq:final4}
+% \det (\Lambda_h^{k+1} ) = \det(  \Lambda_{h}^{k} +  \bphi^{k}_ 
+% h{ \bphi^{k}_h}\trans  )  =  \det(  \Lambda_{h}^{k}) \cdot \det [ I_d + \v _h^k 
+% (\v_h^k)\trans ]  
+% \#
+% where we denote $({\Lambda_{h}^{k}} )^{-1/2} \bphi_h^k$ by $ \v_h^k$ for simplicity. Since 
+% $\det(I_d + \x \x \trans  )    = 1 + \| \x \|^2 $ for any $\x \in \R^d$,  
+% by \eqref{eq:final4} we have 
+% \#\label{eq:final5}
+% \det (\Lambda_h^{k+1} )  =  \det(  \Lambda_{h}^{k}) \cdot \bigl [ 1+ \| \v _h^k  \|^2 \bigr ] =  \det(  \Lambda_{h}^{k}) \cdot \bigl [ 1+ (\bphi^{k}_h)\trans (\Lambda^k_h)^{-1}  \bphi^{k}_h \bigr ].
+% \#
+% Applying recursion to \eqref{eq:final5} and utilizing inequality $x \leq 2 \log (1+x)$ for any $x \in [0, 1]$, we obtain 
+% \#\label{eq:final6}
+% \sum_{k =1}^K   (\bphi^{k}_h)\trans (\Lambda^k_h)^{-1}  \bphi^{k}_h \leq 2 \sum_{k=1}^K \log \bigl [ 1+  (\bphi^{k}_h)\trans (\Lambda^k_h)^{-1}  \bphi^{k}_h \bigr ] = 
+% 2\logdet (\Lambda_h^{k+1} ) -2  \logdet (V_h^1). 
+% \# 
+% \fi
+
+% \cnote{why $\sqrt{\iota^3}$?}  
+% %
+% %\#
+% %& \le \tilde{\mathcal{O}}(H\sqrt{T}) + \tilde{\mathcal{O}}(\beta H \sqrt{d K}) 
+% %\le \tilde{\mathcal{O}}(\sqrt{d^3 H^3 T})
+% %\#
+% %	where the second last step is because (1) the first term is martingale; (2) the second term is standard in linear bandit (matrix/vector pigeon-hole).
+% %\cnote{TODO: fill in more details.}
+% \end{proof}

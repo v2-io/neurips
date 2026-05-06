@@ -1,0 +1,145 @@
+%!TEX root = mainQlin.tex
+
+
+\section{Preliminaries}
+
+We consider the setting of an episodic Markov decision process, denoted by $\rm{MDP}(\cS, \cA, H, \P, r)$, where 
+$\cS$ and $\cA$ are the sets of possible states and actions, respectively, 
+$H \in \mathbb{Z_{+}}$ is the length of each episode,
+$\P = \{ \P_h \}_{h=1}^H $ and $ r = \{ r_h \}_{h=1}^H $  are the  state transition probability measures and the reward functions,  respectively.
+We assume that   $\cS$ is a  \emph{measurable space}  with possibly infinite number of elements and $\cA $ is a finite set with cardinality $A $. Moreover, for each $h \in [ H]$, $\P_h ( \cdot | x, a) $ denotes the transition kernel 
+over the next states if action $a$ is taken for state $x$ at step $h\in [H]$, and $r_h \colon \cS \times \cA \to [0,1]$ is the deterministic reward function at step $h$.%
+\footnote{While we study deterministic reward functions for notational simplicity, our results readily generalize to random  reward functions. Also, we assume the reward lies in $[0,1]$ without loss of generality.}
+
+
+An agent interacts with this episodic MDP as follows. In each episode, an initial state $x_1$ is   picked arbitrarily by an adversary. 
+Then, at each step $h \in [H]$, the agent observes the state $x_h \in \cS$, picks an action $a_h \in \cA$, and receives a reward $r_h(x_h, a_h)$. Moreover, the MDP evolves into a new state  $x_{h+1}$  that 
+is drawn from the probability measure $\P_h(\cdot | x_h, a_h)$. The episode terminates when $x_{H+1}$ is reached. We note that the agent cannot take an action at $x_{H+1}$ and hence receives no reward.
+
+ 
+% 
+%\begin{itemize}
+%\item $\cS$ is a \emph{measurable space} of states which can have infinite elements.
+%\item $\cA$ is a finite set of actions with $|\cA| = A$.
+%\item $H$ is the number of steps in each episode.
+%\item $\P$ is the transition probability so that $\P_h ( \cdot | x, a) $ gives the probability measure 
+%over the next states if action $a$ is taken for state $x$ at step $h\in [H]$.
+%\item $r_h \colon \cS \times \cA \to [0,1]$ is the deterministic reward function at step $h$.%
+%\footnote{While we study deterministic reward functions for notational simplicity, our results generalize to randomized reward functions. Also, we assume the reward is in $[0,1]$ without loss of generality. }
+%\end{itemize}
+
+
+A policy $\pi$ of an agent is a function $\pi: \cS \times [H] \rightarrow \cA$, where  $\pi(x, h)$ is the action that the agent takes at state $x$ and at the $h$th step in the episode. 
+% In the sequel, to simplify the notation, we omit the subscript $h$ in $\pi_h$ when the time step is clear from the context.
+Moreover, for each $h\in [H]$, we define the value function $V_h^{\pi}\colon \cS \to \mathbb{R} $ as the expected value of cumulative  rewards received under policy $\pi$ when starting from an arbitrary state at the $h$th step. Specifically, we have 
+\begin{equation*}%\label{eq:define_Vpifun}
+ \sind{V}{\pi}{h}(x) \defeq \E\left[\sum_{h' = h}^H r_{h'}(x_{h'}, \pi(x_{h'}, h'))  \bigg | x_h = x\right], \qquad \forall x\in \cS, h \in [H].
+\end{equation*}
+Accordingly, we also define the action-value function  $\ind{Q}{\pi}{h}:\cS \times \cA \to \mathbb{R}$ which gives the expected value of cumulative  rewards when the agent starts  from an  arbitrary state-action pair at the $h$-th step and follows  policy $\pi$ afterwards; that is, 
+\begin{equation*}
+ \sind{Q}{\pi}{h}(x,a) \defeq r_h(x, a) + \E  \bigg[\sum_{h' = h+1}^H r_{h'}(x_{h'}, \pi(x_{h'}, h')) \bigg  | x_h = x, a_h = a \bigg], \qquad \forall (x,a) \in \cS\times \cA, \forall h \in [H] .
+\end{equation*}
+Since the action spaces and the episode length are both finite, there always exists 
+ an optimal policy $\pi^\star$ which gives the optimal value $\sind{V}{\star}{h}(x) = \sup_{\pi} V_h^\pi(x)$ for all $x\in \cS$ and $h\in [H]$ \cite[see, e.g.,][]{puterman2014markov}).
+To simplify the notation,  we denote  $[\P_h\sind{V}{}{h+1}](x, a) \defeq \E_{x' \sim \P_h(\cdot|x, a)}\ind{V}{}{h+1}(x')$. Using this notation, the   Bellman equation associated with a policy $\pi$ becomes 
+\begin{align} \label{eq:bellman} 
+    \sind{Q}{\pi}{h}(x, a) = (r_h + \P_h \sind{V}{\pi}{h+1})(x, a) , \qquad   \sind{V}{\pi}{h}(x) = \sind{Q}{\pi}{h}(x, \pi_h(x)),    
+    \qquad \sind{V}{\pi}{H+1}(x) = 0,  
+\end{align}
+which holds for all  $(x,a) \in \cS \times \cA $. Similarly, the Bellman optimality equation is 
+\begin{align}\label{eq:opt_bellman}
+  \sind{Q}{\star}{h}(x, a) = (r_h + \P_h \sind{V}{\star}{h+1})(x, a) , \qquad 
+ \sind{V}{\star}{h}(x) = \max_{a\in\cA}\sind{Q}{\star}{h}(x, a), \qquad \sind{V}{\star}{H+1}(x) = 0. 
+\end{align}
+This implies that the optimal policy $\pi^\star$ is the greedy policy with respect to the optimal action-value function $\{ Q^\star _h \}_{h \in [H]}$. Thus, to find the optimal policy $\pi^\star$, it suffices to estimate  the optimal action-value functions. 
+
+Furthermore, under the setting of an episodic MDP, the agent aims to learn the optimal policy by interacting with the environment during a set of episodes. For each $k \geq 1$, at the beginning of the $k$th episode, the 
+adversary picks the initial  state $x^k_1$ and  the agent chooses  policy $\pi_k$. 
+% By \eqref{eq:define_Vpifun} and \eqref{eq:opt_bellman}, 
+The difference in values between $V^{\pi_k}_1 (x_1^k)$ and $\sind{V}{\star}{1} (\ind{x}{k}{1}) $ serves as the expected regret or the suboptimality of  the agent at the $k$-th episode. 
+Thus, after playing for $K$ episodes, 
+the total (expected) regret is 
+\begin{equation*}
+\text{Regret}(K) = \sum_{k=1}^K \left[\sind{V}{\star}{1} (\ind{x}{k}{1}) - \sind{V}{\pi_k}{1} (\ind{x}{k}{1})\right].
+\end{equation*}
+ 
+
+
+\subsection{Linear Markov decision processes}
+
+% Suppose we are given a feature map: $\bphi: \cS \times \cA \rightarrow \Omega \subset \R^d$, where $\Omega$ is the set of all possible feature vectors.
+% Since the state space $\cS$ can have infinite number of elements,
+We focus on a setting of a \emph{linear Markov decision process}, where the transition kernels and the reward function are assumed to be linear.  This assumption implies that the action-value function is linear, as we will show.  Note that this is \emph{not} the same as the assumption that the policy is a linear function---an assumption that has been the focus of much of the literature. Rather, it is akin to a statistical modeling assumption, in which we make assumptions about how data are generated and then study various estimators.  Formally, we make the following definition.
+% which enables us to take a first step in studying RL with linear function approximation.
+
+% We define  the linear Markov decision process as follows.
+
+\begin{assumption}[Linear MDP \cite{bradtke1996linear, melo2007q}] \label{assumption:linear}
+$\rm{MDP}(\cS, \cA, H, \P, r)$ is a \emph{linear MDP} with a feature map $\bphi: \cS \times \cA \rightarrow \R^d$, if for any $h\in [H]$, there exist $d$ \emph{unknown} (signed) measures $\bmu_h = (\mu_h^{(1)}, \ldots, \mu_h^{(d)})$ over $\cS$ and an \emph{unknown} vector $\btheta_h \in \R^d$, such that 
+ for any $(x, a) \in \cS \times \cA$, we have 
+% \vspace{-2ex}
+\begin{align}\label{eq:linear_transition}  
+% \forall (x, a) \in \cS\times \cA, \qquad 
+\P_h(\cdot\given x, a) = \la\bphi(x, a), \bmu_h(\cdot)\ra, \qquad 
+r_h(x, a) = \la\bphi(x, a), \btheta_h\ra.  
+\end{align}
+Without loss of generality, we assume $\norm{\bphi(x, a)} \le 1$ for all $(x,a ) \in \cS \times \cA$, and $\max\{\norm{\bmu_h(\cS)}, \norm{\btheta_h}\} \le \sqrt{d}$ for all $h \in [H]$.
+\end{assumption}
+By definition, in a linear MDP, both the Markov transition model and the reward functions are linear in a feature mapping $\bphi$. We remark that despite being linear, the Markov transition model $\P_h(\cdot|x, a)$ can still have infinite degrees of freedom as the measure $\bmu_h$ is unknown. This is a key difference from the linear quadratic regulator \citep{abbasi2011regret, dean2018regret, abeille2018improved, abbasi2019model, cohen2019learning} or the recent work of Yang and Wang \citep{yang2019reinforcement}, whose transition models are completely specified by a finite-dimensional matrix such that the degrees of freedom are bounded.  
+
+Recall that we assume the reward functions are bounded in $[0,1]$, which implies that the value functions are bounded in $[0, H]$. Our choice of normalization conditions in Assumption \ref{assumption:linear} implies that the following concrete examples serve as special cases of a linear MDP.
+
+\begin{example}[Tabular MDP] \label{ex:tabular}For the scenario with finitely many states and actions, letting $d =  | \cS | \times | \cA|$, then each coordinate can be indexed by state-action pair $(x, a) \in \cS \times \cA$. Let $\bphi (x, a) = \e_{(x, a)}$ be the canonical basis in $\R^d$. Then if we set $\e_{(x, a)}\trans\bmu_h(\cdot) = \P_h(\cdot|x, a)$ and $\e_{(x, a)}\trans\btheta_h = r_h(x, a)$ for any $h \in [H]$, we recover the tabular MDP.
+\end{example}
+
+\begin{example}[Simplex Feature Space] When the feature space, $\{ \bphi (x, a) \colon (x,a) \in \cS \times \cA\}$, is a subset of the $d$-dimensional simplex, $\{\bpsi| \sum_{i=1}^d \psi_i = 1 \text{~and~} \psi_i \ge 0  \text{~for all~}i \}$,  a linear MDP can be instantiated by choosing $\e_i\trans\bmu_h$ to be an arbitrary probability measure over $\cS$ and letting $\btheta_h$ be any vector such that $\norm{\btheta_h}_\infty \le 1$.
+\end{example}
+
+
+% Note that our Linear MDP covers the tabular setting as a special case by setting     $d =  | \cS | \times | \cA|$ and  defining   $\{ \bphi (x, a) \colon (x,a) \in \cS \times \cA\}$ as  the canonical basis in $\R^d$. 
+% \cnote{Mention tabular is a special case}
+
+% Furthermore,  Throughout this paper,  we require the following the regularity conditions for the model parameters in \eqref{eq:linear_transition}.
+%  We assume that the feature map $\bphi$ satisfy   $\norm{\bphi(x, a)} \le 1$ for all $(x,a ) \in \cS \times \cA$. In addition,  we assume  that  $\norm{\btheta_h} \le \sqrt{d}$  and $\norm{\bmu_h(\cS)} \le \sqrt{d}$ hold for all $h \in [H]$. 
+% We note that here we assume the norm of $\bphi$ is bounded by one without loss of generality. Our results remain the same if we replace the bound by a fixed constant. Besides, {\color{red} here we adopt the Euclidean norm; using other norms will not affect our theory.}  Moreover, the bounds on $\| \btheta_h \| $ and $\|  \bmu_h(\cS) \|$ ensure that $\P_h (\cdot | x, a)$ and $r_h (x,a)$ are both bounded by one. 
+% As a concrete example, consider the case that the image of $\bphi$ is a simplex \znote{or say the canonical basis $\mathbf{e}_i$ ?} in $\R^d$. Then each entry of $\btheta_h$ and $\bmu _h (\cS) $ are bounded by one, which implies that their Euclidean norms are bounded by $\sqrt{d}$ and thus our normalization conditions are satisfied. 
+
+%   \wnote{mention that other norms don't affect our results?} 
+
+
+% Furthermore, we remark  that even though we assume the Markov  transition measures  are of  a  linear form, establishing  provably RL algorithms under our setting is still much more challenging than  that under  the settings of  linear quadratic regulator \citep{abbasi2011regret, dean2018regret, abeille2018improved, abbasi2019model, cohen2019learning}  and the low-rank  transition model  \citep{yang2019reinforcement},  because the degree of freedom in Markov transition measures  can be unbounded as the measure $\bmu_h$ is unknown. In comparison, their transition models are completely specified by a finite-dimensional matrix whose degree of freedom is finite.  
+
+As mentioned earlier, a crucial property of the linear MDP is that, for all policies, the action-value functions are always linear in the feature map $\bphi$. Therefore, when designing RL algorithms, it suffices to focus on linear action-value functions.
+
+
+% This is stated in the following proposition. 
+
+
+% \begin{definition}[Linear Transition Model] Suppose there exists $d$ measures over $\cS$: $\psi_1, \ldots, \psi_d$, and denote $\bpsi = (\psi_1, \ldots, \psi_d)$, and the transition probability measure satisfies:
+% \# \label{eq:linear_transition}
+% \P(\cdot\given x, a) = \la\bphi(x, a), \bpsi(\cdot)\ra. 
+% \# 
+% \end{definition}
+
+% \begin{definition}[Linear Reward] Suppose there exists a $\btheta \in \R^d$ such that
+% \begin{equation*}
+% r (x, a) = \la\bphi(x, a), \btheta\ra. 
+% \end{equation*}
+% \end{definition}
+
+% \begin{definition}[Linear MDP] We call a Markov decision process a \emph{linear Markov decision process}
+% if it has both linear transition model and linear reward.
+% \end{definition}
+
+% We can easily extend the definitions to the episodic setting, where the transition probability measure and reward can be different at each step $h$: \footnote{Note our paper directly applies to the case where feature maps $\bphi_h$ are also different for each step $h$, we keep them the same for clean presentation.}
+% \begin{align*}
+% \P_h(\cdot\given x, a) =& \la\bphi(x, a), \bpsi_h(\cdot)\ra,\\
+% r_h(x, a) =& \la\bphi(x, a), \btheta_h\ra.
+% \end{align*}
+
+
+\begin{restatable}{proposition}{PROPrealizable} \label{prop:realizable}
+For a linear MDP, for any policy $\pi$, there exist weights $\{\w^{\pi}_h\}_{h\in[H]}$ such that for any $(x, a, h) \in \cS\times\cA\times[H]$, we have $Q_h^\pi(x, a) = \la\bphi (x, a),  \w^{\pi}_h\ra$.
+\end{restatable}
+
+We provide a proof of this proposition in Appendix \ref{sec:properties}, where we also present additional  discussion of the basic properties of a linear MDP.

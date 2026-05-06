@@ -1,0 +1,139 @@
+\newcommand{\defeq}{\mathrel{\mathop:}=}
+\newcommand{\veps}{\varepsilon}
+\renewcommand{\epsilon}{\varepsilon}
+
+\renewcommand{\qedsymbol}{\hfill{\Large $\square$}}
+
+
+% Operators
+\newcommand{\vect}[1]{\ensuremath{\mathbf{#1}}}
+\newcommand{\mat}[1]{\ensuremath{\mathbf{#1}}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\grad}{\nabla}
+\newcommand{\hess}{\nabla^2}
+\newcommand{\argmin}{\mathop{\rm argmin}}
+\newcommand{\argmax}{\mathop{\rm argmax}}
+\newcommand{\fracpar}[2]{\frac{\partial #1}{\partial  #2}}
+\newcommand{\iprod}[2]{\langle #1, #2 \rangle}
+
+
+\newcommand{\abs}[1]{\left|{#1}\right|}
+\newcommand{\norm}[1]{\left\|{#1}\right\|}
+\newcommand{\fnorm}[1]{\left\|{#1}\right\|_{\text{F}}}
+\newcommand{\spnorm}[2]{\left\| {#1} \right\|_{\text{S}({#2})}}
+\newcommand{\sigmin}{\sigma_{\min}}
+\newcommand{\tr}{\mathrm{tr}}
+\renewcommand{\det}{\mathrm{det}}
+\newcommand{\rank}{\mathrm{rank}}
+\newcommand{\logdet}{\mathrm{logdet}}
+\newcommand{\trans}{^{\top}}
+\newcommand{\poly}{\text{poly}}
+\newcommand{\polylog}{\text{polylog}}
+\newcommand{\proj}{\mathcal{P}}
+\newcommand{\projII}{\mathcal{P}_{\parallel}}
+\newcommand{\projT}{\mathcal{P}_{\perp}}
+
+% Big O
+\newcommand{\cO}{\mathcal{O}}
+\newcommand{\tlO}{\mathcal{\tilde{O}}}
+\newcommand{\tlOmega}{\tilde{\Omega}}
+
+
+% Set
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\renewcommand{\P}{\mathbb{P}}
+\newcommand{\hP}{\hat{\mathbb{P}}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+
+
+\newcommand{\cA}{\mathcal{A}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cK}{\mathcal{K}}
+\newcommand{\cM}{\mathcal{M}}
+% Matrix and Vectors
+\newcommand{\A}{\mat{A}}
+\newcommand{\B}{\mat{B}}
+\newcommand{\Q}{\mat{Q}}
+\newcommand{\I}{\mat{I}}
+\newcommand{\M}{\mat{M}}
+\newcommand{\D}{\mat{D}}
+\newcommand{\U}{\mat{U}}
+\newcommand{\V}{\mat{V}}
+\newcommand{\W}{\mat{W}}
+\newcommand{\X}{\mat{X}}
+\newcommand{\Y}{\mat{Y}}
+\newcommand{\mSigma}{\mat{\Sigma}}
+\newcommand{\mLambda}{\mat{\Lambda}}
+\newcommand{\e}{\vect{e}}
+\renewcommand{\u}{\vect{u}}
+\renewcommand{\v}{\vect{v}}
+\newcommand{\w}{\vect{w}}
+\newcommand{\x}{\vect{x}}
+\newcommand{\y}{\vect{y}}
+\newcommand{\z}{\vect{z}}
+\newcommand{\q}{\vect{q}}
+
+\renewcommand{\L}{\mathcal{L}}
+\renewcommand{\H}{\mathcal{H}}
+
+\newcommand{\cn}{\kappa}
+\newcommand{\nn}{\nonumber}
+
+
+\newcommand{\ud}{{\mathrm{d}}}
+
+
+
+% \newcommand{\M}{\mat{M}}
+% \newcommand\Mmh{\mat{M}^{-1/2}}
+% \newcommand{\A}{\mat{A}}
+% \newcommand{\B}{\mat{B}}
+% \newcommand{\C}{\mat{C}}
+% \newcommand{\Et}[1][t]{\mat{E_{#1}}}
+% \newcommand{\Etp}{\Et[t+1]}
+% \newcommand{\Errt}[1][t]{\mat{\bigtriangleup_{#1}}}
+% \newcommand\cnM{\kappa}
+% \newcommand{\cn}[1]{\kappa\left(#1\right)}
+% \newcommand\X{\mat{X}}
+% \newcommand\fstar{f_*}
+% \newcommand\Xt[1][t]{\mat{X_{#1}}}
+% \newcommand\ut[1][t]{{u_{#1}}}
+% \newcommand\Xtinv{\inv{\Xt}}
+% \newcommand\Xtp{\mat{X_{t+1}}}
+% \newcommand\Xtpinv{\inv{\left(\mat{X_{t+1}}\right)}}
+% \newcommand\U{\mat{U}}
+% \newcommand\UTr{\trans{\mat{U}}}
+% \newcommand{\Ut}[1][t]{\mat{U_{#1}}}
+% \newcommand{\Utinv}{\inv{\Ut}}
+% \newcommand{\UtTr}[1][t]{\trans{\mat{U_{#1}}}}
+% \newcommand\Utp{\mat{U_{t+1}}}
+% \newcommand\UtpTr{\trans{\mat{U}_{t+1}}}
+% \newcommand\Utptild{\mat{\widetilde{U}_{t+1}}}
+% \newcommand\Us{\mat{U^\star}}
+% \newcommand\UsTr{\trans{\mat{U^\star}}}
+% \newcommand{\Sigs}{\mat{\Sigma}}
+% \newcommand{\Sigsmh}{\Sigs^{-1/2}}
+% \newcommand{\eye}{\mat{I}}
+% \newcommand{\twonormbound}{\left(4+\DPhi{\M}{\Xt[0]}\right)\twonorm{\M}}
+% \newcommand{\lamj}{\lambda_j}
+
+% \renewcommand\u{\vect{u}}
+% \newcommand\uTr{\trans{\vect{u}}}
+% \renewcommand\v{\vect{v}}
+% \newcommand\vTr{\trans{\vect{v}}}
+% \newcommand\w{\vect{w}}
+% \newcommand\wTr{\trans{\vect{w}}}
+% \newcommand\wperp{\vect{w}_{\perp}}
+% \newcommand\wperpTr{\trans{\vect{w}_{\perp}}}
+% \newcommand\wj{\vect{w_j}}
+% \newcommand\vj{\vect{v_j}}
+% \newcommand\wjTr{\trans{\vect{w_j}}}
+% \newcommand\vjTr{\trans{\vect{v_j}}}
+
+% \newcommand{\DPhi}[2]{\ensuremath{D_{\Phi}\left(#1,#2\right)}}
+% \newcommand\matmult{{\omega}}

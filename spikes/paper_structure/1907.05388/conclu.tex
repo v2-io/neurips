@@ -1,0 +1,61 @@
+%!TEX root = mainQlin.tex
+
+
+\section{Conclusion} \label{sec:discussion}
+
+In this paper, we have presented the first provable RL algorithm with both polynomial runtime and polynomial sample complexity for linear MDPs, without requiring a ``simulator'' or additional assumptions. The algorithm is simply Least-Squares Value Iteration---a classical RL algorithm
+commonly studied in the setting of linear function approximation---with a UCB bonus. We hope that our work may serve as a first step towards a better understanding of efficient RL with function approximation.
+
+We provide a few additional concluding observations.
+
+\paragraph{On the optimal dependencies on $d$ and $H$.} Theorem \ref{thm:main} claims the total regret to be upper bounded by $\tilde{\mathcal{O}}(\sqrt{d^3H^3T})$. One immediate question is what the optimal dependencies on $d$ and $H$ are. Since our setting covers the standard tabular setting, as in shown in Example \ref{ex:tabular}, a lower bound can be directly obtained through a reduction from the tabular setting, which gives $\Omega(\sqrt{dH^2T})$ for the case of nonstationary transitions \cite{jin2018q}. We believe the $\sqrt{H}$ difference between this lower bound and our upper bound is expected because the exploration bonus used in this paper is intrinsically ``Hoeffding-type.'' Using a ``Bernstein-type'' bonus can potentially help shave off one $\sqrt{H}$ factor (see \cite{azar2017minimax,jin2018q} for a similar phenomenon in the tabular setting).
+
+In contrast, the optimal dependency on dimension $d$ is more important but is also less clear. In the case where the number of actions is very large, one may attempt to use the lower bound in the linear bandit setting, $\Omega(d\sqrt{T})$, for the case $H=1$. We comment that as soon as $H\ge 2$ (where the Markov transition matters), the assumption of a linear MDP imposes structure on the feature space $\{\bphi(x, a)|(x, a) \in \cS \times\cA\}$ (see Proposition \ref{prop:linear_structure}). Technically, the standard constructions for the hard instances in the linear bandit lower bound do not respect this structure, so the lower bound does not directly apply.  
+It remains an interesting future direction to determine this optimal dependency on $d$.
+
+%   In addition, another interesting question is whether our regret upper bound in Theorem \ref{thm:main} is tight in terms of dimension $d$ and the episode length $H$.  In terms of the dependency on $d$, in the bandit setting,  the best achievable  regrets    are $\tilde{\mathcal{O}}(d\sqrt{T})$ for linear bandits \cite{abbasi2011improved}, and $\tilde{\mathcal{O}}(\sqrt{d T})$ for linear contextual bandits \cite{auer2002using,chu2011contextual}. In addition, 
+% for MDPs whose transition measures are completely specified by a   matrix in $\R^{d\times d}$,  \cite{yang2019reinforcement} establish $\tilde{\mathcal{O}} (H^2 \sqrt{d^3 T})$ regret and also a $\tilde{\mathcal{O}} (H^2 d \sqrt{ T})$ regret under slightly stronger conditions. In contrast, our $\tilde{\mathcal{O}} (  \sqrt{d^3 H^3 T})$ regret has slightly worse dependence on $d$ but has slightly better dependence on $H$. 
+% Here our $ \sqrt{d^3}$ term appears due to   uniform concentration  over the class of all action-value functions, which can potentially be sharpened via more fine-grained analysis. In addition, in terms of the dependence on $H$, for episodic and tabular MDPs without a ``simulator'', the best attainable regret is   $\tilde{\mathcal{O}}(\sqrt{H^3 S A T})$ for the model-free setting \cite{jin2018q}, which has the same dependence on $H$ as our result.  To understand the sharpness of our result, it is interesting to study the minimax lower bound of linear MDP, which will be further explored in our future work.
+
+% There are a few aspects
+
+% In this paper, we establish a provable RL algorithm for linear MDP with both polynomial runtime and polynomial sample complexity. Our algorithm modifies   the least-squares value iteration method to  incorporate optimistic bonus for exploration, which is shown to achieve  $\tilde{\mathcal{O}}(\sqrt{d^3H^3T})$ regret.  To further improve our results, we aim to address the following question in future work. 
+
+\paragraph{On the assumption of linear transition dynamics.} The main assumption in this paper is the linear MDP assumption (Assumption \ref{assumption:linear}), which requires the Markov transition $\P_h(\cdot|x, a)$ to be linear in $\bphi(x, a)$. This requirement could be strong in practice. It turns out that our proof only relies on a weaker version of this assumption:
+\begin{equation} \label{eq:weaker_assumption}
+\P_h V(x, a) = \la \bphi(x, a), \w_{V}\ra, \text{~for all~} V\in\mathcal{V}, 
+\end{equation}
+where $\w_{V}$ is a vector independent of $(x, a)$ and $\mathcal{V}$ is the class of value functions considered in this paper, as in Eq.~\eqref{eq:class_value}. That is, we effectively only need that $\P_h(\cdot|x, a)$ appears to be linear when we apply it to a value function $V$.
+When there is additional problem structure in the feature map $\bphi$ so that $\mathcal{V}$ is relatively small and structured, Eq.~\eqref{eq:weaker_assumption} can potentially provide a usefully weaker condition compared to Assumption \ref{assumption:linear}.
+
+When both the feature map $\bphi$ and the policy $\pi$ are fully generic, we comment that under mild conditions, the assumption of linear transition is then in fact necessary for the Bellman error to be zero for all policies $\pi$.  Indeed, defining the Bellman operator $\mathbb{T}_h^{\pi}$ associated with $\pi$ as 
+\begin{equation} \label{eq:stochastic_bellman}
+(\mathbb{T}_h^{\pi} Q ) (x,a) = r_h(x,a) +\E_{x' \sim \P_h(\cdot \given x, a)}   \bigl\{  Q(x',  \pi(x') )  \bigl \} , \qquad \forall (x,a) \in \cS \times \cA,
+\end{equation}
+for any $Q \colon \cS \times \cA \rightarrow \R$, we have the following proposition.
+% \begin{restatable}{proposition}{PROPbellmanerror} Let $\mathcal{Q} = \{ Q | Q (\cdot, \cdot) = \bphi (\cdot, \cdot)^\top \w, \w\in \R^d \}$ be the family of linear action-value functions. Suppose that reward $r_h$ is linear in $\bphi$. Suppose also that $\cS$ is a finite set, and for any $x \in \cS$, there exist two actions  $a , \bar a \in \cA$ such that $\bphi(x,a) \neq \bphi(x, \bar a)$.   
+% Then, $\mathbb{T}_h ^{\pi} \mathcal{Q} \subset \mathcal{Q}$ for all $\pi$ if and only if the Markov transitions measures $\P_h$ is linear in $\bphi$. 
+% \end{restatable}
+\begin{restatable}{proposition}{PROPbellmanerror} Let $\mathcal{Q} = \{ Q | Q (\cdot, \cdot) = \bphi (\cdot, \cdot)^\top \w, \w\in \R^d \}$ be the family of linear action-value functions. Suppose that $\cS$ is a finite set, and for any $x \in \cS$, there exist two actions  $a , \bar a \in \cA$ such that $\bphi(x,a) \neq \bphi(x, \bar a)$.   
+Then, $\mathbb{T}_h ^{\pi} \mathcal{Q} \subset \mathcal{Q}$ for all $\pi$ only if the Markov transition measures $\P_h$ are linear in $\bphi$. 
+\end{restatable}
+
+
+Finally, it remains an interesting future question whether an RL algorithm can be proved to be efficient without assuming a linear structure in the transition dynamics.
+
+
+% it remains elusive whether any RL algorithm can be provable efficient without assuming any linear structure in the transition dynamics.
+
+%  However, by examing the proofs of our paper, we in fact only requires  
+
+
+% The first question is whether we could obtain similar regret bound under weaker model assumptions. Here our assumptions of linear reward and linear transition measures ensure that the action-value functions are linear. It is interesting to understand whether these assumptions are also necessary. In the following, we establish  the necessity of  linear transition measures for a class of finite MDPs. The general case will be further explored in future work.
+
+
+
+
+
+
+% \paragraph{On Necessity of Linear Transitions, Weaker Assumptions}
+
+% \paragraph{Lower Bound, Optimal Dependence}

@@ -1,0 +1,92 @@
+%!TEX root = mainQlin.tex
+
+
+\section{Properties of Linear MDP} \label{sec:properties}
+
+
+In this section, we present some of the basic properties of linear MDPs.
+
+
+We start with the most important property of a linear MDP: the action-value function is always linear in the feature map $\bphi$ for any policy.
+
+\PROPrealizable*
+
+\begin{proof}
+The linearity of the action-value functions directly follows from the Bellman equation in Eq.~\eqref{eq:bellman}:   
+\$
+Q_h ^{\pi} (x,a ) = r(x, a) + (\P_h V^{\pi} _{h+1}  )(x , a) = \la \bphi(x, a), \btheta_h \ra + \int_{\cS} V_{h+1}^{\pi} (x') \cdot \la \bphi(x, a) , \ud \bmu_h(x') \ra  .  
+  \$
+Therefore, we have $ Q_h^\pi(x, a) = \la\bphi (x, a),  \w^{\pi}_h\ra$ where $\w_h^{\pi}$ is given by $\w_h^{\pi} = \btheta_h + \int_{\cS} V_{h+1}^{\pi} (x' ) ~\ud \bmu_h(x')$.
+\end{proof}
+
+% \cnote{Mengdi's Proposition 2 seems wrong, they didn't prove the only if part, which might be wrong.}
+
+% This proposition shows that, when designing RL algorithms, it suffices to only focus on action-value functions that  are linear in the feature map $\bphi$. 
+
+
+% Moreover, since $\P_h(\cdot|x, a)$ is a probability measure,    \eqref{eq:linear_transition} enforces  additional  conditions on the image of $\bphi$ that are presented as follows.
+
+Second, we show that, under mild conditions, the assumption of a linear transition is necessary for the Bellman error to be zero for all policies $\pi$.
+
+\PROPbellmanerror*
+
+  \begin{proof} 
+  % The proof for ``if'' direction follows from very similar arguments for the proof of Proposition \ref{prop:realizable}. We focus on proving the ``only if'' direction here.
+  
+  For any fixed state $x_0 \in \cS$, by assumption, there exist two actions $a_0$ and $\bar a_0$ such that 
+  $\bphi(x_0,a_0) \neq \bphi(x_0, \bar a_0)$. Then there exists $\w_0 \in \R^d$ such that 
+  \#\label{eq:phi_diffw}
+  \w _0^\top [ \bphi(x_0,a_0)  -  \bphi(x_0, \bar a_0) ] = 1.
+  \#
+  We define the function $Q_0 (\cdot , \cdot) = \bphi(\cdot, \cdot) ^\top \w_0$. Additionally, let two policies $\pi_1$ and $\pi_2$ satisfy 
+  \#\label{eq:two_policy_assumption}
+  \pi_1(  x) = \pi_2(  x), ~~\forall x \in \cS \backslash \{ x_0\}, ~~\text{and}~~ \pi_1(x_0) = a_0, ~~\pi_2(x_0) = \bar a_0.
+  \#
+  Now consider $\mathbb{T}_h ^{\pi_1} Q_0 - \mathbb{T}_h ^{\pi_2} Q_0$ for any $h$. By the definition of Bellman operator in Eq.~\eqref{eq:stochastic_bellman},  for any $(x, a) \in \cS \times \cA$, 
+  we have 
+  \#\label{eq:some_bellman_thing}
+ &  \mathbb{T}_h ^{\pi_1} Q_0 (x,a)- \mathbb{T}_h ^{\pi_2} Q_0 (x,a) = \sum_{x' \in \cS } \P_h(x' \given x, a)    \bigl\{  Q_0\bigl[ x' , \pi_1(x') \bigr ]  - Q_0\bigl [ x' , \pi_2( x')  \bigr ]  \bigr \} \notag \\
+  & \qquad =       \P_h(x_0\given x, a)  \cdot   \bigl [ Q_0( x_0 , a_0 ) - Q_0 ( x_0,  \bar x_0) \bigr ]    =  \P_h(x_0\given x, a)  \cdot \bigl[ \bphi( x_0 , a_0 ) - \bphi ( x_0,  \bar x_0) \bigr ] ^ \top \w_0     ,
+     \#
+     where the second equality holds due to  Eq.~\eqref{eq:two_policy_assumption}.    Thus, by combining 
+    Eq.~\eqref{eq:phi_diffw} and Eq.~\eqref{eq:some_bellman_thing}, we have 
+     \$
+      \mathbb{T}_h ^{\pi_1} Q_0 (x,a)- \mathbb{T}_h ^{\pi_2} Q_0 (x,a) = \P_h(x_0\given x, a) , \qquad \forall (x,a) \in \cS \times \cA.
+\$
+Since $\mathbb{T}_h ^{\pi} \mathcal{Q} \subset \mathcal{Q}$ for all $\pi$, we know both  $\mathbb{T}_h ^{\pi_1} Q_0 $ and $\mathbb{T}_h ^{\pi_2} Q_0 $ are elements of $\mathcal{Q}$, so is
+   $\P_h(x_0\given  \cdot ,\cdot )$, which implies that  $\P_h(x_0\given  \cdot ,\cdot )$ is a linear function of $\bphi (\cdot, \cdot)$. That is, there exists a vector $\bmu(x_0)$ independent of $(x, a)$ so that $\P_h(x_0\given  x ,a ) = \la \bphi(x, a), \bmu(x_0) \ra$ for all $(x, a)$.  Because this holds for all $x_0 \in \cS$, we have $\P_h(\cdot\given  x ,a ) = \la \bphi(x, a), \bmu(\cdot) \ra$. This concludes the proof.
+  \end{proof}
+
+Finally, we note Assumption \ref{assumption:linear} also implicitly enforces the following structure on the feature space since $\P_h(\cdot|x, a)$ must be a probability measure over $\cS$ for any $(x, a) \in \cS \times \cA$.
+
+\begin{proposition}\label{prop:linear_structure}
+For a linear MDP,  for any $(x, a, h) \in \cS\times \cA \times [H] $, we have 
+\begin{align} \label{eq:transition_condition}
+\bphi(x,a) \trans \bmu_h(\cS) =  1, \qquad   
+\bphi(x,a) \trans \bmu_h(\mathcal{B})\ge  0, \quad \forall \text{~measurable~} \mathcal{B} \subseteq \cS.
+\end{align}
+\end{proposition}
+
+\begin{proof}
+This proposition immediately follows from the fact that $\P_h (\cdot \given  x, a)$ is a    probability measure over $\cS$ for any $(x, a, h) \in \cS \times \cA \times [ H ] $.
+\end{proof}
+
+In particular, the first condition in Eq.~\eqref{eq:transition_condition} requires the image of $\bphi$, $\{ \bphi(x, a) | (x, a) \in \cS \times \cA \}$, to be contained in a $(d-1)$-dimensional hyperphane.
+
+
+% The first condition in \eqref{eq:transition_condition} defines a hyperplane in $d$-dimension. That is, the image of $\phi$, $\{ \bphi(x, a) \colon (x, a) \in \cS \times \cA \}$,  is contained in the intersections of $H$- hyperplanes $\bigcap_{h \in [H] } \{  \v \colon \v^\top \bmu_h(\cS ) = 1  \}$. 
+% In addition,  {\color{red}the second condition defines a polytope}. \znote{Why? Polytope is a finite intersection of half planes. Here $\mathcal{B}$'s are uncountable} Overall the condition requires the image of $\bphi$  to be a subset of the intersection of $H$ hyperplanes and $H$ polytopes.
+
+ 
+
+
+
+% \cnote{Can we assume $\e_1, \ldots, \e_d \in \Phi$? Can we assume $\bmu_i$ all probability measure? WE CAN'T! as $\Phi$ can be a single point or very small set, we do not have control over. But proving the easy case $\e_1, \ldots, \e_d \in \Phi$ can potentially help prove the general case.}
+
+
+% Under the linear transition model, the optimal action value functions $\{ Q_{h}^*\}_{h\in [H] }$  are linear in $\bphi$, i.e., $Q_{h}^\star = \bphi ^\top  \w_h ^{\star}$. The optimal Bellman  equation in \eqref{eq:opt_bellman} implies that 
+% \#\label{eq:opt_bellman2}
+% \w_H^\star = \btheta_H, \qquad  \w_h^\star = \btheta_{h} + \int_{\cS} \psi_h(s ) \cdot  V_{h+1} ^{\star}(s) ~\ud s \quad \text{for all}~ h \in [H].
+% \#
+
+

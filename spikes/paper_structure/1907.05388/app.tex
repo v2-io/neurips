@@ -1,0 +1,206 @@
+%!TEX root = mainQlin.tex
+
+
+\section{Auxiliary Lemmas} \label{sec:aux_lem}
+
+This section presents several auxiliary lemmas and their proofs.
+
+\subsection{Important inequalities for summations}
+First, we present a few important short inequalities for summations.
+
+\begin{lemma}\label{lem:basic_ineq} Let $\Lambda_t = \lambda \I + \sum_{i=1}^t \bphi_i \bphi_i\trans$ where $ \bphi_i \in \R^d$ and $\lambda > 0$. Then:
+\begin{equation*}
+\sum_{i=1}^t \bphi_i\trans (\Lambda_t)^{-1} \bphi_i \le d.
+\end{equation*}
+\end{lemma}
+\begin{proof}
+We have $\sum_{i=1}^t \bphi_i\trans (\Lambda_t)^{-1} \bphi_i
+= \sum_{i=1}^t\tr( \bphi_i\trans (\Lambda_t)^{-1} \bphi_i)
+= \tr((\Lambda_t)^{-1} \sum_{i=1}^t\bphi_i\bphi_i\trans)$.
+Given the eigenvalue decomposition  $\sum_{i=1}^t\bphi_i\bphi_i\trans = \U \mathrm{diag}(\lambda_1,  \ldots, \lambda_d)  \U\trans$, we have
+$\Lambda_t = \U \mathrm{diag}(\lambda_1+\lambda,  \ldots, \lambda_d+\lambda) \U\trans$, and $\tr((\Lambda_t)^{-1} \sum_{i=1}^t\bphi_i\bphi_i\trans)=
+\sum_{j=1}^d \lambda_j/(\lambda_j + \lambda) \le d$.
+\end{proof}
+
+
+\begin{lemma} [\cite{abbasi2011improved}]\label{lemma:telescope}
+	Let $\{\bphi_t \}_{t\geq 0}$ be a bounded sequence in $\R^d$  satisfying $\sup_{t\geq 0}\| \bphi_t \| \leq 1$. Let $\Lambda_0  \in \R^{d\times d}$ be a positive definite matrix.  For any $t\geq 0$, we define $
+	\Lambda_t = \Lambda_0 + \sum_{j = 1}^t \bphi_ j ^\top   \bphi_j$.  Then, if the smallest eigenvalue of $\Lambda_0$  satisfies $\lambda_{\min}(\Lambda_0) \geq 1 $, we have 
+	$$
+	\log \biggl [  \frac{\det(
+		\Lambda_t )}{\det(\Lambda_0)}\biggr ] \leq \sum_{j=1}^{t} \bphi_j^\top \Lambda_{j-1} ^{-1} \bphi_j \leq 2 \log \biggl [  \frac{\det(
+		\Lambda_t )}{\det(\Lambda_0)}\biggr ].
+	$$ 
+	\end{lemma}
+\begin{proof}
+	% See Lemma 11 in \cite{abbasi2011improved} for a detailed proof. Here we provide a proof for completeness. 
+	
+	Since $\lambda_{\min} (\Lambda_0) \geq 1$ and  $ \| \bphi_t  \| \leq 1$ for all $j\ge 0$, we have 
+$$
+ \bphi_j ^\top  \Lambda_{j-1}^{-1}  \bphi_j   \leq [\lambda_{\min} (\Lambda_0) ]^{-1}  \cdot  \| \bphi_j  \| ^2 \leq 1 , \qquad  \forall j\geq 0. 
+$$
+Note that, for any $x \in [0,1]$, it holds that $\log (1+x) \le x \le 2 \log (1+x)$.  Therefore, we have 
+\#\label{eq:final12}
+ \sum_{j=1}^{t} \log  \bigl (  1 + \bphi_j ^\top  \Lambda_{j-1}^{-1}   \bphi_j  \bigr ) \le \sum_{j=1}^{t} \bphi_j ^\top  \Lambda_{j-1} ^{-1}  \bphi_j    \leq  2\sum_{j=1}^{t}  \log  \bigl (  1 + \bphi_j ^\top  \Lambda_{j-1}^{-1}   \bphi_j  \bigr ). 
+\# 
+Moreover, for any $t\geq 0 $, by the definition of $\Lambda_t$, we have 
+$$
+\det (\Lambda_t ) = \det(  \Lambda_{t-1}   +  \bphi_{t}  \bphi_t \trans  )  =  \det(  \Lambda_{t-1}  ) \cdot \det ( \I +  \Lambda_{t-1}^{-1/2}\bphi_{t}  \bphi_t \trans\Lambda_{t-1}^{-1/2} )  . 
+$$
+Since $\det ( \I +  \Lambda_{t-1}^{-1/2}\bphi_{t}  \bphi_t \trans\Lambda_{t-1}^{-1/2} )
+= 1+ \bphi_t \trans\Lambda_{t-1}^{-1}\bphi_{t}$, the recursion  gives:
+\begin{equation}\label{eq:final4}
+\sum_{j=1}^{t}  \log  \bigl (  1 + \bphi_j ^\top  \Lambda_{j-1}^{-1}   \bphi_j  \bigr )
+= \logdet (\Lambda_t  ) - \logdet ( \Lambda _0 ). 
+\end{equation}
+Therefore, combining Eq.~\eqref{eq:final12} and Eq.~\eqref{eq:final4}, we conclude the proof.
+\end{proof}
+% by \eqref{eq:final4} we have 
+% \#\label{eq:final15}
+% \det (\Lambda_t  )  =  \det(  \Lambda_{t-1}) \cdot \bigl ( 1+ \| \v _t  \|^2 \bigr ) =  \det(  \Lambda_{t }) \cdot \bigl ( 1+ \bphi _t \trans \Lambda_{t-1} ^{-1}  \bphi_{t}  \bigr). 
+% \#
+% Applying recursion to \eqref{eq:final15} and combining \eqref{eq:final12},     we obtain 
+% \#\label{eq:final16}
+% \sum_{j  =1}^t    \bphi_j ^\top  \Lambda_{j-1} ^{-1}  \bphi_j     \leq 2 \sum_{j =1}^t \log  ( 1+      \bphi_j ^\top  \Lambda_{j-1} ^{-1} \bphi_j  \bigr )  = 
+% 2\logdet (\Lambda_t  ) -2  \logdet ( \Lambda _0 ). 
+% \# 
+
+% Additionally,  by applying inequality $\log (1+x)  \leq x $ to   \eqref{eq:final15} recursively, we have 
+% \#\label{eq:final17}
+% \logdet (\Lambda_t )  - \logdet (\Lambda_0 )  = \sum_{j =1}^t \log  ( 1+      \bphi_j ^\top  \Lambda_{j-1} ^{-1} \bphi_j   \bigr )  \leq   \sum_{j =1}^t   \bphi_j ^\top  \Lambda_{j-1} ^{-1} \bphi_j . 
+% \#
+% Therefore, combining \eqref{eq:final16} and \eqref{eq:final17}, we conclude the proof.
+	
+% \cnote{TODO: put the lemma of telescope to log det here}
+
+
+\subsection{Concentration inequalities for self-normalized processes}
+
+Next, we present a few concentration inequalities. The following one provides a concentration inequality for the standard self-normalized processes.
+\begin{theorem}[Concentration of Self-Normalized Processes \cite{abbasi2011improved}] \label{thm:self_norm}
+Let $\{\epsilon_t\}_{t = 1}^\infty$ be a real-valued stochastic process with corresponding filtration $\{\cF_t\}_{t = 0}^\infty$. Let $\epsilon_t | \cF_{t-1}$ be zero-mean and $\sigma$-subGaussian; i.e. $\E[\epsilon_t | \cF_{t-1}] = 0$, and
+\begin{equation*}
+\forall \lambda \in \R, \qquad \E[e^{\lambda \epsilon_t} |\cF_{t-1}] \le e^{\lambda^2 \sigma^2/2}. 
+\end{equation*} 
+Let $\{\bphi_t\}_{t = 0}^\infty$ be an $\R^d$-valued stochastic process where $\bphi_t \in \cF_{t-1}$. Assume $\Lambda_0$ is a $d\times d$ positive definite matrix, and let $\Lambda_t = \Lambda_0 + \sum_{s=1}^t \bphi_s \bphi_s\trans$. Then for any $\delta>0$, with probability at least $1-\delta$, we have for all $t \ge 0$:
+\begin{equation*}
+\norm{\sum_{s = 1}^t \bphi_s \epsilon_s }^2_{\Lambda_t^{-1}}
+\le 2\sigma^2 \log \left[ \frac{\det(\Lambda_t)^{1/2}\det(\Lambda_0)^{-1/2}}{\delta} \right]. 
+\end{equation*}
+\end{theorem}
+
+% \begin{restatable}{lemma}{LEMunifcon}
+% \end{restatable}
+
+When specializing this concentration inequality to our setting, we require uniform concentration over all value functions $V$ within a function class $\mathcal{V}$. This uniform concentration incurs an additional term that depends logarithmically on the covering number of $\mathcal{V}$.
+\begin{lemma}\label{lem:self_norm_covering}
+Let $\{x_\tau\}_{\tau = 1}^\infty$ be a stochastic process on state space $\cS$ with corresponding filtration $\{\cF_\tau\}_{\tau = 0}^\infty$. Let $\{\bphi_\tau\}_{\tau = 0}^\infty$ be an $\R^d$-valued stochastic process where $\bphi_\tau \in \cF_{\tau-1}$, and $\norm{\bphi_\tau} \le 1$. Let $\Lambda_k = \lambda I + \sum_{\tau=1}^k \bphi_\tau \bphi_\tau\trans$. Then for any $\delta >0$, with probability at least $1-\delta$, for all $k \ge 0$, and any $V \in \mathcal{V}$ so that $\sup_x |V(x)| \le H$, we have:
+\begin{equation*} 
+\norm{\sum_{\tau = 1}^k \bphi_\tau  \bigl \{ V(x_\tau) - \E[V(x_\tau)|\cF_{\tau-1}] \bigr \} }^2_{\Lambda_k^{-1}}
+\le 4H^2 \left[ \frac{d}{2}\log\biggl( \frac{k+\lambda}{\lambda}\biggr )  + \log\frac{\mathcal{N}_{\epsilon}}{\delta}\right]  + \frac{8k^2\epsilon^2}{\lambda}, 
+\end{equation*}
+where $\mathcal{N}_{\epsilon}$ is the $\epsilon$-covering number of $\mathcal{V}$ with respect to the distance $\mathrm{dist}(V, V') = \sup_{x} |V(x) - V'(x)|$.
+\end{lemma}
+
+
+
+\begin{proof}
+For any $V \in \mathcal{V}$, we know there exists a $\tilde{V}$ in the $\epsilon$-covering such that
+\begin{equation*}
+V = \tilde{V} + \Delta_V \quad\text{~and~}\quad \sup_x |\Delta_V(x)| \le \epsilon. 
+\end{equation*}
+This gives following decomposition:
+\begin{align*}
+&\norm{\sum_{\tau = 1}^k \bphi_\tau \bigl \{ V(x_\tau) - \E[V(x_\tau)|\cF_{\tau-1}]\bigr \}  }^2_{\Lambda_k^{-1}}\\
+&\qquad \le  2\norm{\sum_{\tau = 1}^k \bphi_\tau \big\{ \tilde{V}(x_\tau) - \E[\tilde{V}(x_\tau)|\cF_{\tau-1}] \bigr \} }^2_{\Lambda_k^{-1}}
++ 2\norm{\sum_{\tau = 1}^k \bphi_\tau \bigl \{ \Delta_V(x_\tau) - \E[\Delta_V(x_\tau)|\cF_{\tau-1}]\bigr \} }^2_{\Lambda_k^{-1}},
+\end{align*}
+where we can apply Theorem \ref{thm:self_norm} and a union bound to the first term. Also, it is not hard to bound the second term by $8k^2\epsilon^2/\lambda$.
+\end{proof}
+
+To compute the covering number of function class $\mathcal{V}$, we first require a basic result on the covering number of a Euclidean ball as follows. We refer readers to classical material, such as Lemma 5.2 in \cite{vershynin2010introduction}, for its proof.
+
+\begin{lemma} [Covering Number of Euclidean Ball] \label{lem:euclid}
+    For any $\epsilon > 0$, the $\epsilon$-covering number of the  Euclidean ball in $\R^d$ with radius $R> 0$ is upper bounded by $(1 + 2 R/ \epsilon )^d$. 
+\end{lemma}
+
+Now, we are ready to compute the covering number of $\mathcal{V}$.
+
+\begin{lemma} \label{lem:covering_number}
+Let $\mathcal{V}$ denote a class of functions mapping from $\cS$ to $\R$ with following parametric form
+$$V(\cdot) = \min \Bigl \{\max_a \w\trans\bphi(\cdot, a) + \beta \sqrt{\bphi(\cdot, a) \trans\Lambda^{-1} \bphi(\cdot, a)}, H \Bigr \},$$
+where the parameters $(\w, \beta, \Lambda)$ satisfy $\norm{\w} \le L$, $\beta \in [0, B] $ and the minimum eigenvalue satisfies $\lambda_{\min}(\Lambda) \ge \lambda$. Assume $\norm{\bphi(x, a)}\le 1$ for all $(x, a)$ pairs, and let $\mathcal{N}_{\epsilon}$ be the $\epsilon$-covering number of $\mathcal{V}$ with respect to the distance $\mathrm{dist}(V, V') = \sup_{x} |V(x) - V'(x)|$. Then
+% \znote{Maybe briefly define what $\epsilon$-cover means}
+\begin{equation*}
+\log \mathcal{N}_{\epsilon} \le d  \log (1+ 4L / \epsilon ) + d^2 \log \bigl [ 1 +  8 d^{1/2} B^2  / (\lambda\epsilon^2)  \bigr ].
+\end{equation*}
+\end{lemma}
+
+% \LEMunifcon*
+
+\begin{proof}
+Equivalently, we can reparametrize the function class $\mathcal{V}$ by let $\A = \beta^2 \Lambda^{-1}$, so we have
+\begin{align}\label{eq:reparamV}
+V (\cdot) = \min \Bigl \{\max_a \w\trans\bphi(\cdot, a) + \sqrt{\bphi(\cdot, a) \trans \A \bphi(\cdot, a)}, H\Bigr \}
+\end{align}
+for $\norm{\w} \le L$ and $\norm{\A} \le B^2 \lambda^{-1}$.  
+For any two functions $V_1, V_2 \in \mathcal{V}$, let them take the form in Eq.~\eqref{eq:reparamV} with parameters $(\w_1, \A_1)$ and $(\w_2, \A_2)$, respectively. 
+Then, since both $\min\{\cdot, H\}$ and $\max_a$ are contraction maps, 
+we have 
+\begin{align} \label{eq:cover_upper}
+\mathrm{dist}(V_1, V_2)  & \le \sup_{x, a} ~\Bigl | \Bigl[  \w_1\trans\bphi(x, a) + \sqrt{\bphi(x, a) \trans \A_2 \bphi(x, a)  } \Bigr ] -  \Bigl[ \w_2\trans\bphi(x, a) + \sqrt{\bphi(x, a) \trans \A_2 \bphi(x, a)  } \Bigr ] \Bigr |  \notag \\
+&\le  \sup_{\bphi:\norm{\bphi}\le 1} ~\Bigl | \Bigl[  \w_1\trans\bphi + \sqrt{\bphi \trans \A_2 \bphi  } \Bigr ] -  \Bigl[ \w_2\trans\bphi +  \sqrt{\bphi \trans \A_2 \bphi  } \Bigr ] \Bigr |  \notag \\
+& \leq \sup_{\bphi:\norm{\bphi}\le 1}   \bigl | (\w_1 - \w_2) \trans \bphi \bigr | +  \sup_{\bphi:\norm{\bphi}\le 1} \sqrt{  \bigl|  \bphi\trans (\A_1 -\A_2) \bphi    \bigr |  } \notag \\
+& = \| \w_1 - \w_2 \| + \sqrt{\| \A_1 - \A_2 \|} \le \| \w_1 - \w_2 \| + \sqrt{\| \A_1 - \A_2 \|_F}, 
+\end{align}
+where the second last inequality follows from the fact that $| \sqrt{ x} - \sqrt{y} |  \leq \sqrt{ | x- y|}$ holds for any $x, y \geq 0$.
+For matrices, $\norm{\cdot}$ and $\fnorm{\cdot}$ denote the matrix operator norm and Frobenius norm respectively.
+
+Let $\mathcal{C}_{\w}$ be an $\epsilon/2$-cover of $\{\w\in\R^d | \norm{\w} \le L\}$ with respect to the 2-norm, and $\mathcal{C}_{\A}$ be an $\epsilon^2/4$-cover of $\{\A \in \R^{d\times d} | \norm{\A}_F \le d^{1/2}B^2\lambda^{-1}\}$ with respect to the Frobenius norm. By Lemma \ref{lem:euclid}, we know:
+\begin{equation*}
+| \mathcal{C}_\w | \leq ( 1+ 4L / \epsilon ) ^d , \qquad  | \mathcal{C}_\A | \leq \bigl [ 1 +  8 d^{1/2} B^2 / (\lambda\epsilon^2)  \bigr ] ^{d^2}.
+\end{equation*}
+By Eq.~\eqref{eq:cover_upper}, for any $V_1 \in \mathcal{V}$, there exists $\w_2 \in \mathcal{C}_\w$ and $\A_2 \in  \mathcal{C}_\A$ such that $V_2$ parametrized by $(\w_2, \A_2)$ satisfies $\mathrm{dist}(V_1, V_2)  \leq \epsilon$. Hence, it holds that $\mathcal{N}_{\epsilon} \leq | \mathcal{C}_\w | \cdot | \mathcal{C}_\A |$, which gives:
+$$
+\log \mathcal{N}_{\epsilon}  \leq \log  | \mathcal{C}_\w |  +  \log | \mathcal{C}_\A |  \leq d  \log (1+ 4L / \epsilon ) + d^2 \log \bigl [  1 +  8 d^{1/2} B^2  / (\lambda\epsilon^2)  \bigr ].
+$$
+This concludes the proof.
+\end{proof}
+
+% Moreover, 
+% by the definition of 2-norm for vector and spectral norm for matrix, we have
+% % recall that we assume $\|\phi(x,a) \| \leq 1$ for any $(x,a) \in \cS\times \cA$. Thus, the last term in \eqref{eq:cover_upper} can be further simplified as 
+% \#\label{eq:cover_upper2}
+% \mathrm{dist}(V_1, V_2) &  \leq \| \w_1 - \w_2 \| + \sqrt{\| \A_1 - \A_2 \|} \notag \\
+% &    \leq \| \w_1 - \w_2 \|  + \beta_1 \cdot \sqrt{2 \cdot   \|   \A_1 -   \A_2 \|_{\textrm{op}}} + \sqrt{2 | \beta_1 -\beta _2 | \cdot | \beta_1 + \beta_2 | \cdot  \| \A_2 \|_{\textrm{op}}} \notag \\
+% & \leq \| \w_1 - \w_2 \|  + B \cdot \sqrt{2 \cdot   \|   \A_1 -   \A_2 \|_{\textrm{fro}}} + \sqrt{4 B \cdot  \lambda_{\min} ^{-1} }\cdot  \sqrt{ | \beta_1 -\beta _2 | }  ,
+% \#
+% where we denote $\| \cdot \|_{\textrm{op}}$ and $\| \cdot \|_{\textrm{fro}}$ as the matrix operator norm and Frobenius norm, respectively. 
+
+% Furthermore, in the sequel,  let $\mathcal{C}_{\beta}$ be an $\epsilon^2 \cdot \lambda_{\min} / (36B)$-cover of $[0, B]$, let  $\mathcal{C}_w$ be an $\epsilon/3$-cover of $\{  \w \in \R^d\colon \| \w \| \leq L\}$,  and let $\mathcal{C}_A$ be an 
+% $\epsilon^2 / ( 18B^2)$-cover    of 
+% $\{ \A \in \R^{d\times d} \colon  \lambda_i(\A) \in [\lambda_{\max}^{-1}, \lambda_{\min}^{-1}]  \}$ with repect to the Frobenius norm. By \eqref{eq:cover_upper2}, for any $V_1 \in \mathcal{V}$, there exists $\beta_2 \in \mathcal{C}_\beta$,  $\w_2 \in \mathcal{C}_w$ and $\A_2 \in  \mathcal{C}_A$ such that $V_2$ parametrized by $(\beta_2, \w_2, \A_2)$ satisfy $\mathrm{dist}(V_1, V_2)  \leq \epsilon$. Hence, it holds that 
+% $
+% \mathcal{N}_{\epsilon} \leq  | \mathcal{C}_\beta |\cdot  | \mathcal{C}_w | \cdot | \mathcal{C}_A |. 
+% $
+% We utilize Lemma \ref{lem:euclid} to upper bound $ | \mathcal{C}_\beta |$, $ | \mathcal{C}_w | $ and $| \mathcal{C}_A |$ separately. 
+%  Notice that $\{ \A \in \R^{d\times d} \colon  \lambda_i(\A) \in [\lambda_{\max}^{-1}, \lambda_{\min}^{-1}]  \}$ is contained in Frobenius ball $\{\A \in \R^{d\times d} \colon  \| \A \|_{\textrm{fro}} \leq d\cdot \lambda_{\min}^{-1} \}$.
+% By the above lemma, we  have 
+% \# \label{eq:cover1}
+% | \mathcal{C}_\beta | \leq  1 + 36 B \cdot \lambda_{\min}^{-1} /(\epsilon^2)     , \qquad  | \mathcal{C}_w | \leq ( 1+ 6L / \epsilon ) ^d , \qquad  | \mathcal{C}_A | \leq \bigl [ 1 +  18 B^2   \cdot  d \cdot  \lambda_{\min}^{-1}  / (\epsilon^2)  \bigr ]^{d^2}. 
+% \#
+% Therefore, combining \eqref{eq:cover1} and the fact that  $\mathcal{N}_{\epsilon} \leq | \mathcal{C}_\beta | \cdot | \mathcal{C}_w | \cdot | \mathcal{C}_A |$, we have 
+% $$
+% \log \mathcal{N}_{\epsilon}  \leq \log  | \mathcal{C}_\beta | +   \log  | \mathcal{C}_w |  +  \log | \mathcal{C}_A |  \leq d \cdot \log (1+ 6 L / \epsilon ) + (1+ d^2 )\cdot \log [ 1 +  18 B (B+2)   \cdot  d \cdot  \lambda_{\min}^{-1}  / (\epsilon^2)  \bigr ],
+% $$
+% which concludes the proof.
+% % 
+% %We have $\mathcal{N}_\epsilon \le \mathcal{M}_\epsilon$, where $\mathcal{M}_\epsilon$ is the $\epsilon$-covering number of:
+% %$$Q(\bphi) = \w\trans\bphi + \beta \sqrt{\bphi\trans \A \bphi}$$ with respect to the distance 
+% %$\mathrm{dist}(Q, Q') = \sup_{\bphi:\norm{\bphi}\le 1} |Q(\bphi) - Q'(\bphi)|$.
+% %\cnote{TODO: fill in more details.}
+% % concentration of self-normalized process + covering number of V function.
+% % note $\mathcal{V}$ defined as the max function of step 8 in Algorithm 1.
+% % We first construct a $\delta$-covering of the unit ball 
+% \end{proof}
+

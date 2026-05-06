@@ -1,0 +1,211 @@
+%!TEX root = mainQlin.tex
+
+
+\section{Main Results} \label{sec:results}
+
+In this section, we present our main results, which provide sample complexity guarantees for Algorithm \ref{algo:LSVI-UCB} in the linear MDP setting (Theorem \ref{thm:main}) and in a misspecified setting (Theorem \ref{thm:main_mis}). 
+
+\begin{algorithm}[t]
+\caption{Least-Squares Value Iteration with UCB (LSVI-UCB)}\label{algo:LSVI-UCB}
+\begin{algorithmic}[1]
+  %  \State Initialize each entry of $\w_h $  by zero  and initialize $\Lambda_h$ by $ \lambda \cdot \I$ for all $h \in [H]$.
+  % \State Initialize $Q_h(\cdot, \cdot)\leftarrow 0$ for all $h\in[H+1]$.
+\For{episode $k = 1, \ldots, K$}
+\State Receive the initial state $x^k_1$.
+\For{step $h = H, \ldots, 1$}
+\State $\Lambda_h \leftarrow \sum_{\tau =1}^{k-1}  \bphi(x^{\tau}_h,  a^{\tau}_h)\bphi(x^{\tau}_h, a^{\tau}_h)\trans + \lambda \cdot  \I$. \label{line:Lambda}
+\State $\w_h \leftarrow \Lambda_h^{-1} \sum_{\tau=1}^{k-1} \bphi(x^{\tau}_h,  a^{\tau}_h) [r_h(x^{\tau}_h, a^{\tau}_h) + \max_a Q_{h+1}(x^{\tau}_{h+1}, a)]$. \label{line:w}
+\State $Q_h(\cdot, \cdot) \leftarrow \min\{\w_h\trans\bphi(\cdot, \cdot) + \beta  [\bphi(\cdot, \cdot)^\top \Lambda_h^{-1} \bphi(\cdot, \cdot)]^{1/2}, H\}$. \label{line:ucb}
+\EndFor
+% \State Let $\pi_k $ be the greedy policy with respect to $\{ Q_h \} _{h \in [H]}$
+\For{step $h = 1, \ldots, H$}
+\State Take action $a^k_h \gets  \argmax_{a \in \cA } Q_h(x^k_h, a)$, and observe $x^k_{h+1}$. 
+\EndFor
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+We first lay out our algorithm (Algorithm \ref{algo:LSVI-UCB})---an optimistic modification of Least-Square Value Iteration (LSVI), where the optimism is realized by Upper-Confidence Bounds (UCB). At a high level, each episode consists of two passes (or loops) over all steps. The first pass (line 3-6) updates the parameters $(\w_h, \Lambda_h)$ that are used to form the action-value function $Q_h$. The second pass (line 7-8) executes the greedy policy, $a_h = \argmax_{a \in \cA} Q_h(x_h, a)$, according to the $Q_h$ obtained in the first pass. We note $Q_{H+1}(\cdot, \cdot)\equiv 0$ since the agent receives no reward after the $H$th step. For the first episode $k=1$, since the summation in line 4-5 is from $\tau = 1$ to $0$, we simply have $\Lambda_h \leftarrow \lambda \I$ and $\w_h \leftarrow 0$. Line 6 specifies the dependency of the action-value function $Q_h$ on the parameters $\w_h$ and $\Lambda_h$, and no actual updates need to be performed.
+
+The idea of Least-Square Value Iteration \cite{bradtke1996linear,osband2014generalization} stems from the classical value-iteration algorithm, which finds the optimal policy (or action-value function) by applying the Bellman optimality equation Eq.~\eqref{eq:opt_bellman} recursively:
+\begin{equation*}
+\sind{Q}{\star}{h}(x, a) \leftarrow \bigl[r_h + \P_h \max_{a'\in\cA}\sind{Q}{\star}{h+1}(\cdot, a')\bigr](x, a), \quad \forall(x, a) \in \cS\times \cA.
+\end{equation*}
+In practical RL with linear function approximation, there are two challenges to face in implementing the updates: First, $\P_h$ is unknown, and it is replaced by the samples observed empirically. Second, in the setting of large state space, we cannot iterate over all $(x, a)$. We parametrize $Q_h^\star(x, a)$ by a linear form $\w_h\trans \bphi(x, a)$ instead. A natural idea here is to replace the Bellman update by solving for $\w_h$ in a least-squares problem. In fact, the update of $\w_h$ in Algorithm \ref{algo:LSVI-UCB} solves precisely the following regularized least-squares problem:
+\begin{equation*}
+\w_h \leftarrow \argmin_{\w \in \R^d} \sum_{\tau = 1}^{k-1} \bigl [r_h ( x_h^\tau , a_h^\tau) + \max_{a \in \cA } Q_{h+1} ( x_{h+1} ^\tau, a) - \w ^\top \bphi ( x_h^{\tau },  a_h^\tau )    \bigr ]^2 + \lambda  \| \w \|^2.
+\end{equation*}
+Algorithm \ref{algo:LSVI-UCB} additionally adds an UCB bonus term of form $\beta (\bphi\trans \Lambda_h^{-1} \bphi)^{1/2}$ to encourage exploration, where $\Lambda_h$ is the Gram matrix of the regularized least-squares problem, and $\beta$ is a scalar. This form of bonus is common in the literature on linear bandits \cite{bubeck2012regret, lattimore2018bandit}. Intuitively, $m \defeq (\bphi\trans \Lambda_h^{-1} \bphi)^{-1}$ represents the effective number of samples the agent has observed so far along the $\bphi$ direction, and thus the bonus term $\beta/\sqrt{m}$ represents the uncertainty along the $\bphi$ direction. It is called an upper confidence bound because, by choosing a proper value for $\beta$ we can prove that, with high probability, $Q_h$ in line \ref{line:w} of Algorithm \ref{algo:LSVI-UCB} is always an upper bound of $Q_h^\star$ for all state-action pair (see Lemma \ref{lem:UCB}).
+
+We are now ready to state our main theorem, which gives a $\sqrt{T}$-regret bound in the linear MDP setting without any further assumptions. Here, $T=KH$ is the total number of steps.
+
+%  Furthermore,  
+%  in each episode, after observing the initial state $x_1$ provided by the adversary, for each $h \in [H]$,  at the $h$-th step, we take the  greedy action $a_h = \argmax_{a \in \cA} Q_h(x_h, a)$ with respect to  function $Q_h $ in \eqref{eq:ucb_qfun} and obtain reward $r_h(x_h, a_h)$ and the next state $x_{h+1}$. When the current episode terminates, we 
+%   update parameters $\w_h$ by solving a  least-squares ridge regression   where the response variable is set as   value $r_h (x_h, a_h) + \max _{a \in \cA  } Q_{h+1}(x_{h+1}, a)$,  and update 
+% $\Lambda_h$ by letting 
+% $
+%   \Lambda_h \leftarrow \Lambda_h + \bphi (x_h, a_h ) \bphi (x_h, a_h )  ^\top$.    The details of our algorithm are stated in Algorithm \ref{algo:LSVI-UCB}.
+%   Our algorithm combines the upper-confidence bound (line \ref{line:ucb}) with least-squares value iteration for estimating the action-value functions (line \ref{line:w}). 
+%   Thus,  our algorithm is named Least-Squares Value Iteration with UCB (LSVI-UCB). 
+%    In particular, line \ref{line:w}  specifies the updating rule for  $\w_h$. After completing $k-1$ episodes, $\w_h$ is updated by solving a least-squares regression with $k-1$ observations $\{ \bphi (x_h^\tau, a_h^\tau ), y_h^\tau \}_{\tau =1}^{k-1}$, where $(x_h^\tau, a_h^\tau) $  is the $h$-th state-action pair  in the $\tau$-th episode and $y_h ^\tau  = r_h ( x_h^\tau , a_h^\tau) + \max_{a \in \cA } Q_{h+1} ( x_{h+1} ^\tau, a) $. That is, $\w_h$ is the solution to $\ell_2$-regularized least-squares problem \cnote{Discuss why it's called least-square value iteration}
+%   \$
+%    \min_{\w \in \R^d } \sum_{ \tau =1}^{k-1}   \bigl [ y_h^\tau - \w ^\top \bphi ( x_h^{\tau },  a_h^\tau )    \bigr ]^2 + \lambda \cdot  \| \w \|^2 ,
+%   \$
+%   whose solution is identical to  line \ref{line:w} in Algorithm \ref{algo:LSVI-UCB}.    
+%   Here $\lambda > 0$ is the regularization parameter. 
+%   Using  $\w _h ^\top \bphi (\cdot , \cdot) $ to estimate  the optimal value function $Q^* _h (\cdot, \cdot )$ recovers the classical least-squares value iteration algorithm \citep {bradtke1996linear}.   
+%   Finally, we remark that, in the first episode with $k = 1$,  $\Lambda_h$ is set as $\lambda \cdot \I$  to ensure positive definiteness.  Besides,   we set $\w _h $ to be a zero vector in $\R^d$ and set $Q_h $ to be a zero function. 
+
+
+
+% Note that, by Proposition \ref{prop:realizable},  the action-value functions $\{ Q_h^\star \}_{h \in [H]}$ are linear in $\bphi$. 
+% In the  algorithm,  for each $h \in [ H]$, we  maintain  a parameter $\w _h \in \R ^d $ to estimate $Q_h^*$. 
+% In addition,  due to the uncertainty of our estimate of the value functions, we also maintain  an optimistic bonus term to strike a balance between exploration and exploitation. Specifically, we maintain a positive definite  matrix $\Lambda_h \in \R^{d\times d}$ and use $  \bphi (x,a) ^\top \Lambda_h^{-1} \bphi(x,a) $ as a proxy of the variance  of the estimate of  $Q_h^\star (x,a)$.  
+% Thus, at each iteration of our algorithm, we construct a function $Q_h \colon \cS \times \cA \rightarrow \R $ which is defined as 
+% \#\label{eq:ucb_qfun}
+% Q_h  (x,a ) =  \min \bigl  \{     \w_h\trans\bphi(x, a) + \beta \cdot  \sqrt{\bphi(x, a)^\top \Lambda_h^{-1} \bphi(x, a)}, H \bigr  \}, 
+% \# and take actions according to the greedy policy with respect to $Q_h$.  
+% Here $\beta > 0$ is a parameter and we upper  bound $Q_h  $ by $H$ since the rewards are bounded by one. 
+% It can be shown that, when $\beta$ is chosen appropriately,  $Q_h$ defined in 
+% \eqref{eq:ucb_qfun} provides  an upper bound for the optimal value function $Q_h^\star $ uniformly for all $(s,a) \in  \cS \times \cA $ and $h \times [H]$ with high probability. In other words,  
+% $Q_h$ serves as an upper confidence bound for $Q_h^\star$. 
+ 
+
+
+
+ 
+
+
+
+
+% In the following theorem, we show that  LSVI-UCB achieves $\tilde{\mathcal{O}}(\sqrt{H^2 S A T})$ regret 
+% when hyperparameters $\beta$  and $\lambda$ are properly chosen. 
+ 
+ 
+
+% \cnote{Idealy, we would hope $\beta = \Theta( H \sqrt{d} \cdot \iota)$ to give sharper dependence.}
+
+\begin{restatable}{theorem}{THMmain} \label{thm:main}
+Under Assumption \ref{assumption:linear}, there 
+exists an absolute constant $c >0$ such that, for any fixed $p \in (0, 1)$, if we set $\lambda = 1$ and  $\beta =  c \cdot d H \sqrt{\logt} $ in Algorithm \ref{algo:LSVI-UCB} with $\logt \defeq \log (2dT/p)$,   
+ then with probability $1-p$, the total regret of LSVI-UCB (Algorithm \ref{algo:LSVI-UCB}) is at most $\cO(\sqrt{d^3 H^3 T\logt^2})$, where $\cO(\cdot)$ hides only absolute constants. 
+\end{restatable}
+
+Theorem \ref{thm:main} asserts that when $\lambda$ and $\beta$ are set properly, LSVI-UCB will suffer total regret at most $\tilde{\cO}(\sqrt{ d^3 H ^3 T })$. We emphasize that while a naive adaptation of existing linear bandit algorithms to this linear MDP setting easily yields a regret exponential in $H$, our regret is only polynomial in $H$. Avoiding this exponential dependency on the planning horizon is a key step in efficiently solving the sequential RL problem. Additionally, comparing to the minimax regret in a tabular setting, $\tilde{\Theta}(\sqrt{H^2SAT})$, our regret replaces the number of state-action pairs $SA$ by a polynomial dependency on the intrinsic complexity measure of feature space, $d$. In fact, our regret is completely independent of $S$ and $A$, which is crucial in the large state-space setting where function approximation is necessary. Please see also Section \ref{sec:discussion} for more discussion on the optimal dependencies on $d$ and $H$.
+
+% We also note we lose one $\sqrt{H}$ factor which is standard when using Hoeffding type of exploration bonus (as in Algorithm \ref{algo:LSVI-UCB}) instead of Bernstein type \cite{azar2017minimax}.
+
+We remark that Algorithm \ref{algo:LSVI-UCB} only needs to store $\Lambda_h, \w_h$, $r(x_h^k, a_h^k)$ and $\{\bphi(x_{h}^k, a)\}_{a\in\cA}$ for all $(h, k)\in [H]\times[K]$, which takes $\cO(d^2H + dAT)$ space. When we compute $\Lambda_h^{-1}$ by the Sherman-Morrison formula, the computational complexity of Algorithm \ref{algo:LSVI-UCB} is dominated by line 5 in computing $\max_a Q_{h+1}(x^{\tau}_{h+1}, a)$ for all $\tau \in [k]$. This takes $\cO(d^2 A K)$ time per step, which gives a total runtime $\cO(d^2 AKT)$.
+
+% Notice that obtaining  $\Lambda_h^{-1}$ requires  $\cO(d^2 )$ computation via Sherman-Morrison formula. Then calculating $Q_{h+1}(x^{\tau}_{h+1}, a)$ for each $a \in \cA$  entails $\cO(d^2 )$ computation due to computing a matrix-vector product. Thus, line 5 in Algorithm \ref{algo:LSVI-UCB}   takes $\cO(d^2 A K)$ time per step, which yields the total  $\cO(d^2 AKT)$ runtime complexity.  
+
+Finally, similarly to the discussion in Section 3.1 of \cite{jin2018q}, our regret bound (Theorem \ref{thm:main}) directly translates to a sample complexity guarantee (or a PAC guarantee) in the following sense. When the initial state $x_1$ is fixed for all episodes, then, with at least constant probability, we can learn an $\epsilon$-optimal policy $\pi$ which satisfies $V^\star (x_1) - V^\pi (x_1 ) \leq \epsilon$ using $\tilde{\cO}(d^3H^4/\epsilon^2)$ samples. The algorithm to achieve this is to simply run Algorithm \ref{algo:LSVI-UCB} for $K=\tilde{\cO}(d^3H^3/\epsilon^2)$ episodes, and then output the greedy policy according to the action-value function $Q$ at the $k$th episode, where $k$ is sampled uniformly from $[K]$.
+
+% \begin{remark}
+% Algorithm \ref{algo:LSVI-UCB} requires $\tilde{\mathcal{O}}(d^2 + dT)$ space, and terminates in $\tilde{\mathcal{O}}(d^2T)$ time.
+% \end{remark}
+
+% As shown in Theorem \ref{thm:main}, when neglecting the logarithmic term $\iota$, 
+% the regret is of order $\sqrt{ d^3 H ^3 T }$  with high probability  when 
+%  we set  $\lambda $ to be a constant and set $\beta $ to be of order $d H$.  We note that such regret bound is independent of the number of states and actions. Moreover, it depends on the  episode  length $H$ only through $H^{3/2}$, {\color{red} whereas directly applying results from the contextual bandit literature would have exponential dependency on $H$.}  
+%  Moreover, our regret depends on the dimensionality $d$ through $d^{3/2}$, which appears due to bounding the norm of $\w_h$ and the error of linear squares regression in each iteration of the algorithm. 
+% \znote{discuss dependency on $d$. }
+% Besides, the runtime and computational complexity of our  algorithm depends on the size of the MDP via the dimensionality, and are independent of the sizes of $\cS$ and $\cA$. Thus, compared with tabular algorithms, LSVI-UCB enjoys significant advantage when $| \cS|$ is large. 
+%   \cnote{Discuss the runtime and space in case of $|\cA|$ is finite, or maximization over $\cA$ can be solved explicitly}.  
+ 
+%  In addition,  as discussed in \cite{jin2018q}, any sublinear regret result  under the episodic MDP setting can be translated into an upper bound on the sample complexity guarantee for finding an approximately optimal policy
+% in the probably approximately correct (PAC) learning setting for RL 
+%  \citep{kakade2003sample}.
+%   Under the PAC learning for RL, we assume that the initial state $x_1$ is fixed to some $x^\star \in \cS$, and we are  want to know  the number of samples needed to ensure that  the  RL algorithm of interest returns with high probability an $\epsilon$-optimal policy $\pi$  satisfying $V^\star (x_1) - V^\pi (x_1 ) \leq \epsilon$. Here $\epsilon $ is an arbitrary positive number. Note that our LSVI-UCB algorithm has $ C \cdot \sqrt{ d^3  H ^3 T} $ regret when applied to a linear MDP, where $C$ is an absolute constant and we ignore the logarithmic term $\logt$. 
+%  Thus, when applying our algorithm for  $K$ episodes, we have 
+%  % $\sum_{k=1}^K [ 
+  
+
+% \iffalse 
+% \noindent Choice of hyperparameter:
+% \begin{equation}\label{eq:hyperparameters}
+% \lambda = \Theta(1), \quad \beta = \Theta( dH \cdot \iota),  
+% \end{equation}
+% \fi 
+
+%\cnote{TODO: sample complexity, see our Q-learning paper for the translation.}
+
+
+\subsection{Results for a misspecified setting}
+
+Theorem \ref{thm:main} hinges on the fact that the MDP has a linear structure. A natural follow-up question arises: what would happen if the underlying MDP is not linear, and thus misspecified? We first present a definition for an approximate linear model.
+
+ 
+% \iffalse 
+% \subsection{Results for Nearly Linear Models}\label{sec:nonlinear}
+% \fi 
+
+\begin{assumption}[$\zeta$-Approximate Linear MDP]\label{assumption:nearly_linear} For any $\zeta\le 1$, we say that
+$\rm{MDP}(\cS, \cA, H, \P, r)$ is a \emph{$\zeta$-approximate linear MDP} with a feature map $\bphi: \cS \times \cA \rightarrow \R^d$, if for any $h\in [H]$, there exist $d$ \emph{unknown} (signed) measures $\bmu_h = (\mu_h^{(1)}, \ldots, \mu_h^{(d)})$ over $\cS$ and an \emph{unknown} vector $\btheta_h \in \R^d$ such that for any $(x, a) \in \cS\times \cA$, we have 
+\begin{align}\label{eq:nearly_linear_transition} 
+\|\P_h(\cdot\given x, a) -  \la\bphi(x, a), \bmu_h(\cdot)\ra \|_{\mathrm{TV}} \le \zeta, \qquad  
+|r_h(x, a) - \la\bphi(x, a), \btheta_h\ra| \le \zeta.   
+\end{align}
+Without loss of generality, we assume that $\norm{\bphi(x, a)} \le 1$ for all $(x,a ) \in \cS \times \cA$, and $\max\{\norm{\bmu_h(\cS)}, \norm{\btheta_h}\} \le \sqrt{d}$ for all $h \in [H]$.
+\end{assumption}
+
+
+% \cnote{where $\norm{\cdot}_{\mathrm{TV}}$ is standard TV distance.}
+By definition, an MDP is an $\zeta$-approximately linear MDP if there exists a linear MDP such that their Markov transition dynamics and reward functions are close. Here the closeness between transition dynamics is measured in terms of total variation distance. 
+ 
+In general, an algorithm designed for a linear MDP could break down entirely if the underlying MDP is not linear. The following theorem states that this is not the case for our algorithm. It is in fact robust to small model misspecification. To achieve this, we need only to adopt a different hyperparameter $\beta$ in different episodes.
+% choose hyperparameter $\beta$ in line 6 dependent on the episode number $k$.
+
+
+% \cnote{$\beta_k$, only incur}
+
+
+% Following theorem 
+
+% Due to model misspecification, using an algorithm designed for linear MDP may potentially incur huge regret. 
+% In our regret analysis, we adopt a different hyperparameter $\beta$ in each episode to get more refined upper confidence bounds. Specifically, in the $k$-th episode, we replace line \ref{line:ucb} by 
+% \$
+% Q_h(\cdot, \cdot) \leftarrow \min\{\w_h\trans\bphi(\cdot, \cdot) + \beta_k \cdot  \sqrt{\bphi(\cdot, \cdot)^\top \Lambda_h^{-1} \bphi(\cdot, \cdot)}, H\},
+% \$  
+% where the $\beta_k$ depends on $k$.
+% As will be shown in the following theorem, with appropriate $\lambda $ and $\{ \beta_k \}_{k \in [ K] } $, we incur an additional $ \tilde{\mathcal{O}}(\zeta d H T )$  when the model is $\zeta$-misspecified. 
+ 
+ 
+% \iffalse 
+% \textbf{Normalization Conditions.} We assume the same normalization conditions as in Assumption \ref{assumption:linear}.
+% \fi 
+
+
+
+% \iffalse 
+% \noindent Choice of hyperparameter:
+% \begin{equation}\label{eq:hyperparameters_mis}
+% \lambda = \Theta(1), \quad \beta_k = \Theta( (d + \zeta\sqrt{kd})H \cdot \iota), \quad \iota = \log (dT/\delta)
+% \end{equation}
+% % \cnote{Idealy, we would hope $\beta = \Theta( H \sqrt{d} \cdot \iota)$ to give sharper dependence.}
+% \fi 
+
+
+\begin{restatable}{theorem}{THMmainmis} \label{thm:main_mis}
+Under Assumption \ref{assumption:nearly_linear}, there 
+exists an absolute constant $c >0$ such that,  for any fixed $p \in (0, 1)$, if we set $\lambda = 1$ and  $\beta_k  =  c \cdot (d\sqrt{\logt} + \zeta\sqrt{kd})H $ in Algorithm \ref{algo:LSVI-UCB} with $\logt \defeq \log (2dT/p)$,   
+then with probability $1-p$, the total regret of LSVI-UCB (Algorithm \ref{algo:LSVI-UCB}) is at most $\cO \bigl ( \sqrt{d^3 H^3 T\logt^2} + \zeta dHT\sqrt{\logt} \bigr )$. 
+% where $C' > 0$ is an absolute constant that does not depend on $d$, $H$, $T$, or $p$. 
+\end{restatable}
+
+
+Compared with Theorem \ref{thm:main}, Theorem \ref{thm:main_mis} asserts that the LSVI-UCB algorithm will incur at most an additional $\tilde{\cO}(\zeta dHT)$ regret when the model is misspecified. This additional term is inevitably linear in $T$ due the intrinsic bias introduced by linear approximation. When $\zeta$ is sufficiently small, i.e., the underlying MDP is not far away from being linear, our algorithm will still enjoy good theoretical guarantees.
+
+Theorem \ref{thm:main_mis} can also be converted to a PAC guarantee with a similar flavor. 
+% with similar arguments for Theorem \ref{thm:main}. 
+When the initial state $x_1$ is fixed for all episodes, then, with at least constant probability, we can learn an $\epsilon$-optimal policy $\pi$ which satisfies $V^\star (x_1) - V^\pi (x_1 ) \leq \epsilon + \tilde{\cO}(\zeta d H^2)$ using $\tilde{\cO}(d^3H^4/\epsilon^2)$ samples. 
+
+
+
+
+% By this theorem, when applying LSVI-UCB algorithm 
+% to a $\zeta$-misspecified Linear MDP, the regret consists of two parts. The first part, $ C' \sqrt{d^3 H^3 T\logt^3}$, which also appears in Theorem \ref{thm:main},   corresponds to the regret of solving  a linear MDP. Whereas the second part $C' \zeta dHT\logt$ arises due to model misspecification. Intuitively, LSVI-UCB finds the optimal policy of the linear MDP which approximates the true MDP, a price of $ C' \sqrt{d^3 H^3 T\logt^3}$ is paid for finding this policy. However, since we are solving a wrong model, we suffer from a  $\mathcal{O}(\zeta)$ misspecification  error  at each time step, which yields an additional   $\mathcal{O}(\zeta T)$ regret.  
+
+
+
+

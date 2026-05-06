@@ -1,0 +1,91 @@
+%!TEX root = mainQlin.tex
+
+
+\section{Mechanisms}
+
+In this section, we overview several of the key ideas behind the regret bound in Theorem \ref{thm:main}. We defer the full proof of Theorem \ref{thm:main} and Theorem \ref{thm:main_mis} to Appendix \ref{app:proof_main} and Appendix \ref{app:proof_main_mis} respectively.
+
+In Section \ref{sec:results}, we mentioned that the LSVI algorithm is motivated from the Bellman optimality equation Eq.~\eqref{eq:opt_bellman}. It remains to verify that line \ref{line:w} in Algorithm \ref{algo:LSVI-UCB} indeed well approximates the Bellman optimality equation, 
+which turns out to require not only the linear MDP structure but also hinges on several other facts. 
+
+To simplify our presentation, in this section we treat the regularization parameter $\lambda$ loosely as being sufficiently small so that $\Lambda_h^{-1} \sum_{\tau =1}^{k-1}  \bphi(x^{\tau}_h,  a^{\tau}_h)\bphi(x^{\tau}_h, a^{\tau}_h)\trans \approx \I$. We will focus in this section on a fixed episode $k$, and drop the dependency of parameters and value functions on $k$ when it is clear from the context. Now, ignoring the UCB bonus, the least-squares solution (line \ref{line:w}) gives the following estimate of the action-value function:
+\begin{equation*}
+Q_h(x, a) \approx \bphi(x, a)\trans \w_h = \bphi(x, a)\trans\Lambda_h^{-1} \sum_{\tau=1}^{k-1} \bphi(x^{\tau}_h,  a^{\tau}_h) [r_h(x^{\tau}_h, a^{\tau}_h) +  V_{h+1}(x^{\tau}_{h+1})],
+\end{equation*}
+where $V_{h+1}(\cdot) = \max_{a\in\cA} Q_{h+1}(\cdot, a)$. Plugging in $r_h(\cdot, \cdot) = \bphi(\cdot, \cdot)\trans \btheta_h$, we know the first term on the right-hand side approximates $r_h(x, a)$. Comparing this to Eq.~\eqref{eq:opt_bellman}, it remains to show why the second term of right-hand side approximates $\P_h V_{h+1}(x, a)$. We thus define our empirical Markov transition measure as
+\begin{equation*}
+\hat{\P}_h (\cdot | x, a) \defeq \bphi(x, a)\trans\Lambda_h^{-1} \sum_{\tau=1}^{k-1} \bphi(x^{\tau}_h,  a^{\tau}_h) \delta(\cdot, x^{\tau}_{h+1}),
+\end{equation*}
+where the $\delta$-measure $\delta(\cdot, x)$ puts an atom on element $x$. It remains to verify that $\hat{\P}_h V_{h+1}(x, a) \approx \P_h V_{h+1}(x, a)$.
+% to better explain the intuition behind our theoretical results, we introduce the core mechanisms that enable us to establish the regret upper bound in Theorem \ref{thm:main}. 
+To establish this, we use a measure $\bar{\P}_h$ to bridge these two quantities: 
+\begin{equation} \label{eq:P_bar}
+\bar{\P}_h (\cdot | x, a) \defeq \bphi(x, a)\trans\Lambda_h^{-1} \sum_{\tau=1}^{k-1} \bphi(x^{\tau}_h,  a^{\tau}_h) \P_h(\cdot | x^{\tau}_h,  a^{\tau}_h).
+\end{equation}
+Our analysis depends on the following two key steps.
+
+\paragraph{Step 1: Prove $\hat{\P}_h V_{h+1}(x, a) \approx \bar{\P}_h V_{h+1}(x, a)$ via  Value-Aware Uniform Concentration.} Computing the difference, we have $(\hat{\P}_h - \bar{\P}_h)V_{h+1}(x, a) 
+= \bphi(x, a)\trans\Lambda_h^{-1} \sum_{\tau=1}^{k-1} \bphi(x^{\tau}_h,  a^{\tau}_h) [V_{h+1}(x^\tau_{h+1}) - \P_h V_{h+1}(x^{\tau}_h,  a^{\tau}_h)]$. Since $\x^\tau_{h+1}$ is a sample from the distribution $\P_h(\cdot|x^{\tau}_h,  a^{\tau}_h)$, we would expect this term to be small due to concentration. This would be the case if function $V_{h+1}$ is \emph{fixed and independent of the samples} $\{x^\tau_{h+1}\}_{\tau=1}^{k-1}$. Then, $V_{h+1}(x^\tau_{h+1}) - \P_h V_{h+1}(x^{\tau}_h,  a^{\tau}_h)$ is a zero-mean random variable in $[-H, H]$, and we could aim to use a concentration inequality for self-normalized processes to bound $(\hat{\P}_h - \bar{\P}_h)V_{h+1}(x, a)$. Please see Theorem \ref{thm:self_norm} or \cite{abbasi2011improved} for more detail on this approach.
+
+However, the function $V_{h+1}$ in Algorithm \ref{algo:LSVI-UCB} is again computed by least-squares value iteration in later steps $[h+1, H]$ and it thus inevitably depends on the choices of actions $\{a^\tau_{h+1}\}_{\tau=1}^{k-1}$, and thus also samples $\{x^\tau_{h+1}\}_{\tau=1}^{k-1}$. Therefore, the concentration of self-normalized process does not apply directly. To resolve this issue, we establish the uniform concentration over all value functions in the following class:
+\begin{equation}\label{eq:class_value}
+\mathcal{V} = \Big \{ V(\cdot ) | V(\cdot ) = \min \bigl  \{ \max_{a \in \cA} \bphi (\cdot, a)  ^\top  \w + \beta \sqrt{\bphi (\cdot, a) \Lambda^{-1} \bphi (\cdot, a)}, H\bigr \}, \w \in \R^d, \beta \in \R, \Lambda \in \R^{d\times d} \Bigr \},
+\end{equation}
+where the parameters $\w, \beta, \Lambda$ are all bounded. We ensure that Algorithm \ref{algo:LSVI-UCB} only uses value functions within this class $\mathcal{V}$, which has a reasonably small covering number. This gives, with high probability, $|(\hat{\P}_h - \bar{\P}_h)V_{h+1}(x, a)| \le \tilde{\cO}(dH)\cdot(\bphi(x, a) \Lambda^{-1}_h \bphi(x, a))^{1/2}$  (Lemma \ref{lem:stochastic_term}). 
+
+
+\paragraph{Step 2: Show $\bar{\P}_h V_{h+1}(x, a) \approx \P_h V_{h+1}(x, a)$ due to Linear Markov Transitions.} One big challenge in RL with function approximation is that, due to the large state space, the learner may never visit the neighborhood of a state-action pair twice. This raises a question of how to use the experiences from other state-action pairs to infer information about a state-action pair of interest. In Eq.~\eqref{eq:P_bar}, $\bar{P}_h(\cdot|x, a)$ provides such an estimate via regularized least-squares. Our modeling assumption of a linear MDP (Assumption \ref{assumption:linear}) ensures that this least-square estimate is valid: since $\P_h(\cdot|x, a)=\bphi(x, a)\trans\bmu_h(\cdot)$ for any $(x, a)$ pair, we have
+\begin{equation*}
+\bar{\P}_h (\cdot | x, a) = \bphi(x, a)\trans\Lambda_h^{-1} \sum_{\tau=1}^{k-1} \bphi(x^{\tau}_h,  a^{\tau}_h)\bphi(x^{\tau}_h,  a^{\tau}_h)\trans\bmu_h(\cdot)
+\approx \bphi(x, a)\trans\bmu_h(\cdot) = \P_h (\cdot | x, a).
+\end{equation*}
+
+In summary, combining step 1 and step 2, we establish $\hat{\P}_h V_{h+1}(x, a) \approx \P_h V_{h+1}(x, a)$, and hence show that LSVI approximates the optimal Bellman equation. We emphasize that despite being linear, the Markov transition model $\P_h(\cdot|x, a) = \bphi(x, a)\trans \bmu_h(\cdot)$ can still have infinite degrees of freedom since the measure $\bmu_h$ is unknown. Therefore, within a finite number of samples, no algorithm can establish that $\hat{\P}_h$ and $\P_h$ are close in total variation distance. In contrast, our algorithm only requires $\hat{\P}_h V_{h+1}(x, a) \approx \P_h V_{h+1}(x, a)$ for all value functions $V_{h+1}$ in a small function class $\mathcal{V}$ (especially in step 1). This bypasses the need for fully learning the transition model $\P_h$. Thus, our algorithm can also be viewed as ``\emph{model-free}'' in this sense.  
+
+Finally, with the above key observations in mind, our proof proceeds by leveraging and adapting techniques from the literature on tabular MDP and linear bandits. Please see Appendix \ref{app:proof_main} and \ref{app:proof_main_mis} for the details.
+
+
+% This is the place where the assumpton of linear MDP plays a key role. It allows the least square solution provides a good approximate to the expectation under true transition model.
+
+
+% Note the most difference... (instead of bound TV, we bound the expected on the restrict class of functions.)
+
+% Remaining, adapt tabular, linear bandits results.
+
+
+
+
+% {\noindent \bf Mechanism 1: Linear Transition Model.}
+
+
+%  The first mechanism is that the linear transition model enables us to perform approximate value iteration via least-squares regression. Specifically, for any $h \in [H]$, let $Q_{h+1}$ be the current estimate of the $h+1$-step action-value function. Then value iteration aims to update $Q_h $ by 
+%  \#\label{eq:lin_bellman}
+%  Q_h(x,a)  =  r(x, a) + (\P_h V _{h+1}  )(x , a) = \la \bphi(x, a), \btheta_h \ra + \bigg \la \bphi(x, a) , \int_{\cS} V_{h+1} (x')   \ud \bmu_h(x') \bigg\ra  ,
+%  \#
+% where $V_{h+1} (x ) = \max _{a\in \cA} Q_{h+1} (x,a)$ for all $x\in \cS$.
+% Thus, when $K$ is sufficiently large, solving a least-squares regression problem using data $\{ r(x^{ k}_h, a^{k }_h) + V(x^{k}_{h+1}),\bphi( x^{ k}_h, a_h^{k } ) \}_{ k \in [K]} $ yields an accurate estimate of $Q_h$.
+% Moreover, by \eqref{eq:lin_bellman}, we can construct an empirical estimator of the Markov transition operator by regressing $\{ V(x^{k}_{h+1}) \}_{k\in [K]} $ to  $\{\bphi( x^{ k}_h, a_h^{k } ) \}_{ k \in [K]} $.  When combined with $\ell_2$-regularization, the regression coefficient is $  \Lambda_h^{-1} \sum_{\tau=1}^{K} \bphi(x^{\tau}_h,  a^{\tau}_h) \cdot V_{h+1}(x^{\tau}_{h+1} )$, where $  \Lambda_h = \sum_{\tau =1}^{K}  \bphi(x^{\tau}_h,  a^{\tau}_h)\bphi(x^{\tau}_h, a^{\tau}_h)\trans + \lambda \cdot  \I $.  Hence, for any $V_{h+1}$, 
+% \#\label{eq:empirical_bellman}
+% ( \hat \P_h V _{h+1} ) (x,a) =  \biggl \la \bphi (x, a) , \Lambda_h^{-1} \sum_{\tau=1}^{K} \bphi(x^{\tau}_h,  a^{\tau}_h) \cdot V_{h+1}(x^{\tau}_{h+1} ) \biggr \ra  
+% \#
+% is an empirical estimator of $(\P_h V _{h+1})(x, a)$, which converges to   $\P_h V _{h+1}(x, a)$ when $K$ goes to infinity.
+ 
+ 
+%  \iffalse 
+% Talk about our empirical transition matrix estimator
+
+% , linear transition -> enough samples -> true estimator 
+% \fi 
+
+
+% {\noindent \bf Mechanism 2: Value-Aware Concentration.}
+% Our  second pivotal technique   is to bound the difference between $\hat \P_h V _{h+1} $  and $\P_h V _{h+1}$ via uniform concentration with respect to the family to all possible value functions.
+% Note that the family of  value functions is a subclass   
+% \$
+% \cF = \Big \{ V(\cdot ) \colon V(\cdot ) = \min \bigl  \{ \max_{a \in \cA} \bphi (\cdot, a)  ^\top  \w, H   \bigr \}, \w \in \R^d \Bigr \} .\$
+%  This approach is in stark contrast to directly establishing uniform concentration over function class $\cF$. Since parameter $\w \in \R^d$ in $\cF$ might not be bounded, function class  $\cF$ can have huge capacity. To overcome such a difficulty, we incorporate   $\ell_2$-regularization in least-squares value iteration  (line \ref{line:w} in Algorithm \ref{algo:LSVI-UCB}). 
+%  As we will show in the appendix, with $\ell_2$-regularization, it suffices to only focus on value functions in  $\cF$ satisfying $\| \w \| \leq 2 H  \sqrt{d k / \lambda}$, where $\lambda $ is the regularization parameter.  For properly chosen $\lambda$, this family of value functions forms a much smaller subclass  of $\cF$ and thus enable us to establish sharper concentration results.
+
+% \iffalse 
+% Mechanism 2, Concentration, we only require empirical transition and population are similar for all value functions used in the algorithm, the complexity of which is under controls.
+% \fi

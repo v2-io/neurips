@@ -1,0 +1,75 @@
+%!TEX root = mainQlin.tex
+
+
+
+\subsection{Related Work}\label{sec:related}
+
+\paragraph{Tabular RL:}
+Tabular RL is well studied in both model-based \cite{jaksch2010near, osband2014generalization, azar2017minimax, dann2017unifying} and model-free settings \cite{strehl2006pac, jin2018q}. See also \cite{koenig1993complexity, azar2011speedy, azar2012sample, lattimore2012pac, sidford2018variance, wainwright2019variance} for a simplified setting with access to a ``simulator'' (also called a generative model), which is a strong oracle that allows the algorithm to query arbitrary state-action pairs and return the reward and the next state. The ``simulator'' significantly alleviates the difficulty of exploration, since a naive exploration strategy which queries all state-action pairs uniformly at random already leads to the most efficient algorithm for finding an optimal policy \cite{azar2012sample}.
+
+In the episodic setting with nonstationary dynamics and no ``simulators,'' the best regrets achieved by existing model-based and model-free algorithms are $\tilde{\mathcal{O}}(\sqrt{H^2 S A T})$ \cite{azar2017minimax} and $\tilde{\mathcal{O}}(\sqrt{H^3 S A T})$ \cite{jin2018q}, respectively, both of which (nearly) attain the minimax lower bound $\Omega(\sqrt{H^2 S A T})$ \cite{jaksch2010near, osband2016lower, jin2018q}.
+% , while model-free algorithms enjoy lower runtime. 
+Here $S$ and $A$ denote the numbers of states and actions, respectively. Although these algorithms are (nearly) minimax-optimal, they can not cope with large state spaces, as their regret scales linearly in $\sqrt{S}$, where $S$ is often exponentially large in practice \cite[see, e.g.,][]{mnih2013playing, silver2016mastering, kober2012reinforcement, li2016deep}. Moreover, the minimax lower bound suggests that, information-theoretically, a large state space cannot be handled efficiently unless further problem-specific structure is exploited. Compared with this line of work, in the current paper we exploit the linear structure of the reward and transition functions and show that the regret of optimistic LSVI scales polynomially in the ambient dimension $d$ rather than the number of states $S$. 
+
+
+\paragraph{Linear bandits:} To enable function approximation, another line of related work studies stochastic linear bandits or stochastic linear contextual bandits \cite[see, e.g.,][]{auer2002using, dani2008stochastic, li2010contextual, rusmevichientong2010linearly, chu2011contextual, abbasi2011improved}, which is a special case of the linear MDP studied in this paper (Assumption \ref{assumption:linear}) with the episode length $H$ set equal to one. See \cite{bubeck2012regret, lattimore2018bandit} and the references therein for a detailed survey. The best regrets achieved by existing algorithms are $\tilde{\mathcal{O}}(d\sqrt{T})$ for linear bandits \cite{abbasi2011improved} and $\tilde{\mathcal{O}}(\sqrt{d T})$ for linear contextual bandits \cite{auer2002using,chu2011contextual}, both of which scale polynomially in the ambient dimension $d$. We note, however, that while an MDP has state transition, linear bandits do not. This temporal structure captures the fundamental difference in their difficulties of exploration: a naive adaptation of existing linear bandit algorithms to the linear MDP setting yields a regret exponential in $H$---the length of each episode.
+
+%  As a key difference between linear bandits and linear MDP: while 
+
+% We note that while the world remains the same after pulling 
+
+% However, a straightforward application of existing linear bandit algorithms to linear MDP yields regret exponential in $H$, the length of each episode, which captures the fundamental difference between linear contextual bandit and linear MDP, especially the different difficulty of exploration.  
+
+\paragraph{RL with function approximation:} In the setting of linear function approximation, there is a long line of classical work on the design of algorithms, but this work does not provide polynomial sample efficiency guarantees~\cite[see, e.g.,][]{bradtke1996linear, melo2007q, sutton2011reinforcement, osband2014generalization, azizzadenesheli2018efficient}.  Recently, Yang and Wang \cite{yang2019sample} revisited the setting of linear transitions and rewards \cite{bradtke1996linear, melo2007q} (Assumption \ref{assumption:linear}), and presented a sample-efficient algorithm assuming the access to a ``simulator''. Similar to the case of tabular setting, the ``simulator'' greatly alleviates the difficulty of exploration. We also note that their very recent work \cite{yang2019reinforcement}, developed independently of the current paper, provides sample efficiency guarantees for exploration in the linear MDP setting. Compared with the current paper, \cite{yang2019reinforcement} differs in that requires one additional key assumption---that the transition model can be parameterized by a relatively small matrix. This additional assumption reduces the number of free parameters in the transition model from potentially being infinite (for the case with an infinite number of states) 
+% what scales linearly in the number of states 
+to small and finite, and thus mitigates the challenges in estimating the transition model. As a result, their algorithm and main mechanism are based on estimating the unknown matrix, which differs from our approach. Finally, in a broader context, without the assumption of a linear MDP, sample efficiency guarantees have been established for RL under other assumptions, such as that the transition dynamics are fully deterministic \cite{wen2013efficient, wen2017efficient}, or have low variances \cite{du2019provably}. These assumptions can be potentially restrictive in practice, and may not hold even in the tabular setting. In contrast, our results directly cover the standard tabular case with no extra assumptions.
+
+
+In the setting of general function approximation, Jiang et al. \cite{jiang2017contextual} present a generic algorithm Olive, which enjoys sample efficiency if a complexity measure that they refer to as ``Bellman rank'' is small. It can be shown that Bellman rank is at most $d$ under Assumption \ref{assumption:linear}, and thus Olive is sample efficient in our setting. In contrast to our results, Olive is not computationally efficient in general and it does not provide a $\sqrt{T}$ regret bound. Meanwhile, a recent line of work \cite{zhu2019lipschitz, wang2019towards} studies a nonparametric setting with H\"older smooth reward and transition model. The sample complexities provided therein are exponential in dimensionality in the worst case. 
+
+% In the setting of general function approximation, Jiang et al. \cite{jiang2017contextual} present a generic algorithm, which enjoys sample efficiency if a complexity measure that they refer to as ``Bellman rank'' is small. Their result does not directly apply to our setting since it remains unclear whether the Bellman rank is bounded under our Assumption \ref{assumption:linear}. Their basic algorithm is also not computationally efficient. A recent line of work \cite{zhu2019lipschitz, wang2019towards} studies a nonparametric setting with H\"older smooth reward and transition model. The sample complexities provided therein are exponential in dimensionality in the worst case. 
+% \cnote{Mention Nan Jiang's result.}
+
+
+
+% while in this paper (without this additional assumption), 
+%  which is quite different from ours. Finally, in a broader context without assuming linear MDP
+
+
+
+% Wen and Van Roy \cite{wen2013efficient, wen2017efficient} firstly establish the sample efficient guarantees for the linear setting, but requiring the transition dynamics to be fully determinisitc, which may be restrictive in practice. Du et al. \cite{du2019provably} proved a sample efficiency result assuming the transition dynamics has small variance.
+
+
+
+
+
+% propose an efficient algorithm based on an oracle that checks the shift of state distributions without assuming the linear transition model. However, they require the transition model to have relatively small variance, which is close to deterministic (Assumption 3.1 therein). Meanwhile, they only establish polynomial sample complexity without specifying the exact dependence on $H$, $d$, and the optimality gap.
+
+
+
+
+% a more general linear setting without requiring the linear transition model. However, their results require the MDP to be deterministic, which may be restrictive in practice. Also, in concurrent work, Du et al. \cite{du2019provably} propose an efficient algorithm based on an oracle that checks the shift of state distributions without assuming the linear transition model. However, they require the transition model to have relatively small variance, which is close to deterministic (Assumption 3.1 therein). Meanwhile, they only establish polynomial sample complexity without specifying the exact dependence on $H$, $d$, and the optimality gap.
+
+
+
+% also under linear MDP assumption, the aforementioned line of work \cite{yang2019sample, yang2019reinforcement} achieves $\sqrt{T}$-regret (or sample complexity) that scales polynomially in $d$ and $H$ when assuming additional oracles, such as the ``simulator'' \cite{yang2019sample}, or stronger assumptions, such as low-rank transition model \cite{yang2019reinforcement}, which are not required in this paper. In particular, compared with \cite{yang2019reinforcement}, our algorithm does not require explicitly estimating such a transition model, which leads to lower runtime and more practical relevance. In a broader context, Wen and Van Roy \cite{wen2013efficient, wen2017efficient} establish efficient guarantees in a more general linear setting without requiring the linear transition model. However, their results require the MDP to be deterministic, which may be restrictive in practice. Also, in concurrent work, Du et al. \cite{du2019provably} propose an efficient algorithm based on an oracle that checks the shift of state distributions without assuming the linear transition model. However, they require the transition model to have relatively small variance, which is close to deterministic (Assumption 3.1 therein). Meanwhile, they only establish polynomial sample complexity without specifying the exact dependence on $H$, $d$, and the optimality gap. \cnote{edit this paragraph}
+
+% In the context of general function approximation, a very recent line of work \cite{zhu2019lipschitz, wang2019towards} goes beyond the linear setting to study a nonparametric setting with H\"older smooth reward and transition model, which however suffers from the curse of dimensionality. 
+% \cnote{Mention Nan Jiang's result.}
+
+% Most existing positive results on efficient RL in such a basic yet fundamental linear setting require either additional oracles or stronger assumptions. In a recent breakthrough, Yang and Wang \cite{yang2019sample} propose an efficient algorithm assuming the access to a ``simulator'', which alleviates the difficulty of exploration by allowing the algorithm to query arbitrary state-action pairs. Very recently, Yang and Wang \cite{yang2019reinforcement} propose another efficient algorithm under the additional assumption that the transition model can be parameterized by a low-rank matrix, which needs to be estimated accurately in their algorithm. 
+
+
+
+
+% See Section \ref{sec:related} for more related results. (1. ``almost'' deterministic, 2. polynomial without specifying dependence, sqrt{T} regret)
+
+
+%Mengdi's work consider the special case where transition matrix can be further parametrized by a $d \times d$ matrix.
+%Mengdi paper is model based.
+
+%Tabular setting reinforcement learning 
+
+%Linear bandit 
+
+%Linear setting reinforcement learning: Simulators (or oracle, no exploration), Exploration, LQR, Other function approximation results (Nan Jiang's CDP, Simon Du's seperation oracle, Dunson?)

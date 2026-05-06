@@ -1,0 +1,326 @@
+\begin{thebibliography}{51}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Abbasi-Yadkori and Szepesv{\'a}ri(2011)]{abbasi2011regret}
+Y.~Abbasi-Yadkori and C.~Szepesv{\'a}ri.
+\newblock Regret bounds for the adaptive control of linear quadratic systems.
+\newblock In \emph{Conference on Learning Theory}, pages 1--26, 2011.
+
+\bibitem[Abbasi-Yadkori et~al.(2011)Abbasi-Yadkori, P{\'a}l, and
+  Szepesv{\'a}ri]{abbasi2011improved}
+Y.~Abbasi-Yadkori, D.~P{\'a}l, and C.~Szepesv{\'a}ri.
+\newblock Improved algorithms for linear stochastic bandits.
+\newblock In \emph{Advances in Neural Information Processing Systems}, pages
+  2312--2320, 2011.
+
+\bibitem[Abbasi-Yadkori et~al.(2019)Abbasi-Yadkori, Lazic, and
+  Szepesv{\'a}ri]{abbasi2019model}
+Y.~Abbasi-Yadkori, N.~Lazic, and C.~Szepesv{\'a}ri.
+\newblock Model-free linear quadratic control via reduction to expert
+  prediction.
+\newblock In \emph{International Conference on Artificial Intelligence and
+  Statistics}, pages 3108--3117, 2019.
+
+\bibitem[Abeille and Lazaric(2018)]{abeille2018improved}
+M.~Abeille and A.~Lazaric.
+\newblock Improved regret bounds for {T}hompson sampling in linear quadratic
+  control problems.
+\newblock In \emph{International Conference on Machine Learning}, pages 1--9,
+  2018.
+
+\bibitem[Auer(2002)]{auer2002using}
+P.~Auer.
+\newblock Using confidence bounds for exploitation-exploration trade-offs.
+\newblock \emph{Journal of Machine Learning Research}, 3\penalty0
+  (Nov):\penalty0 397--422, 2002.
+
+\bibitem[Azar et~al.(2011)Azar, Munos, Ghavamzadaeh, and
+  Kappen]{azar2011speedy}
+M.~G. Azar, R.~Munos, M.~Ghavamzadaeh, and H.~J. Kappen.
+\newblock Speedy {Q}-learning.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2011.
+
+\bibitem[Azar et~al.(2012)Azar, Munos, and Kappen]{azar2012sample}
+M.~G. Azar, R.~Munos, and B.~Kappen.
+\newblock On the sample complexity of reinforcement learning with a generative
+  model.
+\newblock \emph{arXiv preprint arXiv:1206.6461}, 2012.
+
+\bibitem[Azar et~al.(2017)Azar, Osband, and Munos]{azar2017minimax}
+M.~G. Azar, I.~Osband, and R.~Munos.
+\newblock Minimax regret bounds for reinforcement learning.
+\newblock In \emph{International Conference on Machine Learning}, pages
+  263--272, 2017.
+
+\bibitem[Azizzadenesheli et~al.(2018)Azizzadenesheli, Brunskill, and
+  Anandkumar]{azizzadenesheli2018efficient}
+K.~Azizzadenesheli, E.~Brunskill, and A.~Anandkumar.
+\newblock Efficient exploration through bayesian deep q-networks.
+\newblock In \emph{2018 Information Theory and Applications Workshop (ITA)},
+  pages 1--9. IEEE, 2018.
+
+\bibitem[Baird(1995)]{baird1995residual}
+L.~Baird.
+\newblock Residual algorithms: Reinforcement learning with function
+  approximation.
+\newblock In \emph{International Conference on Machine Learning}, pages 30--37,
+  1995.
+
+\bibitem[Boyan and Moore(1995)]{boyan1995generalization}
+J.~A. Boyan and A.~W. Moore.
+\newblock Generalization in reinforcement learning: Safely approximating the
+  value function.
+\newblock In \emph{Advances in Neural Information Processing Systems}, pages
+  369--376, 1995.
+
+\bibitem[Bradtke and Barto(1996)]{bradtke1996linear}
+S.~J. Bradtke and A.~G. Barto.
+\newblock Linear least-squares algorithms for temporal difference learning.
+\newblock \emph{Machine Learning}, 22\penalty0 (1-3):\penalty0 33--57, 1996.
+
+\bibitem[Bubeck and Cesa-Bianchi(2012)]{bubeck2012regret}
+S.~Bubeck and N.~Cesa-Bianchi.
+\newblock Regret analysis of stochastic and nonstochastic multi-armed bandit
+  problems.
+\newblock \emph{Foundations and Trends{\textregistered} in Machine Learning},
+  5\penalty0 (1):\penalty0 1--122, 2012.
+
+\bibitem[Chu et~al.(2011)Chu, Li, Reyzin, and Schapire]{chu2011contextual}
+W.~Chu, L.~Li, L.~Reyzin, and R.~Schapire.
+\newblock Contextual bandits with linear payoff functions.
+\newblock In \emph{International Conference on Artificial Intelligence and
+  Statistics}, pages 208--214, 2011.
+
+\bibitem[Cohen et~al.(2019)Cohen, Koren, and Mansour]{cohen2019learning}
+A.~Cohen, T.~Koren, and Y.~Mansour.
+\newblock Learning linear-quadratic regulators efficiently with only $\sqrt
+  {T}$ regret.
+\newblock \emph{arXiv preprint arXiv:1902.06223}, 2019.
+
+\bibitem[Dani et~al.(2008)Dani, Hayes, and Kakade]{dani2008stochastic}
+V.~Dani, T.~P. Hayes, and S.~M. Kakade.
+\newblock Stochastic linear optimization under bandit feedback.
+\newblock In \emph{Conference on Learning Theory}, 2008.
+
+\bibitem[Dann et~al.(2017)Dann, Lattimore, and Brunskill]{dann2017unifying}
+C.~Dann, T.~Lattimore, and E.~Brunskill.
+\newblock Unifying pac and regret: Uniform pac bounds for episodic
+  reinforcement learning.
+\newblock In \emph{Advances in Neural Information Processing Systems}, pages
+  5713--5723, 2017.
+
+\bibitem[Dean et~al.(2018)Dean, Mania, Matni, Recht, and Tu]{dean2018regret}
+S.~Dean, H.~Mania, N.~Matni, B.~Recht, and S.~Tu.
+\newblock Regret bounds for robust adaptive control of the linear quadratic
+  regulator.
+\newblock In \emph{Advances in Neural Information Processing Systems}, pages
+  4188--4197, 2018.
+
+\bibitem[Du et~al.(2019)Du, Luo, Wang, and Zhang]{du2019provably}
+S.~S. Du, Y.~Luo, R.~Wang, and H.~Zhang.
+\newblock Provably efficient {Q}-learning with function approximation via
+  distribution shift error checking oracle.
+\newblock \emph{arXiv preprint arXiv:1906.06321}, 2019.
+
+\bibitem[Jaksch et~al.(2010)Jaksch, Ortner, and Auer]{jaksch2010near}
+T.~Jaksch, R.~Ortner, and P.~Auer.
+\newblock Near-optimal regret bounds for reinforcement learning.
+\newblock \emph{Journal of Machine Learning Research}, 11\penalty0
+  (4):\penalty0 1563--1600, 2010.
+
+\bibitem[Jiang et~al.(2017)Jiang, Krishnamurthy, Agarwal, Langford, and
+  Schapire]{jiang2017contextual}
+N.~Jiang, A.~Krishnamurthy, A.~Agarwal, J.~Langford, and R.~E. Schapire.
+\newblock Contextual decision processes with low bellman rank are
+  pac-learnable.
+\newblock In \emph{Proceedings of the 34th International Conference on Machine
+  Learning-Volume 70}, pages 1704--1713. JMLR. org, 2017.
+
+\bibitem[Jin et~al.(2018)Jin, Allen-Zhu, Bubeck, and Jordan]{jin2018q}
+C.~Jin, Z.~Allen-Zhu, S.~Bubeck, and M.~I. Jordan.
+\newblock Is {Q}-learning provably efficient?
+\newblock In \emph{Advances in Neural Information Processing Systems}, pages
+  4863--4873, 2018.
+
+\bibitem[Kober and Peters(2012)]{kober2012reinforcement}
+J.~Kober and J.~Peters.
+\newblock Reinforcement learning in robotics: A survey.
+\newblock In \emph{Reinforcement Learning}, pages 579--610. Springer, 2012.
+
+\bibitem[Koenig and Simmons(1993)]{koenig1993complexity}
+S.~Koenig and R.~G. Simmons.
+\newblock Complexity analysis of real-time reinforcement learning.
+\newblock In \emph{Association for the Advancement of Artificial Intelligence},
+  pages 99--107, 1993.
+
+\bibitem[Lattimore and Hutter(2012)]{lattimore2012pac}
+T.~Lattimore and M.~Hutter.
+\newblock {PAC} bounds for discounted {MDP}s.
+\newblock In \emph{International Conference on Algorithmic Learning Theory},
+  pages 320--334, 2012.
+
+\bibitem[Lattimore and Szepesv{\'a}ri(2018)]{lattimore2018bandit}
+T.~Lattimore and C.~Szepesv{\'a}ri.
+\newblock Bandit algorithms.
+\newblock \emph{preprint}, 2018.
+
+\bibitem[Li et~al.(2016)Li, Monroe, Ritter, Galley, Gao, and
+  Jurafsky]{li2016deep}
+J.~Li, W.~Monroe, A.~Ritter, M.~Galley, J.~Gao, and D.~Jurafsky.
+\newblock Deep reinforcement learning for dialogue generation.
+\newblock \emph{arXiv preprint arXiv:1606.01541}, 2016.
+
+\bibitem[Li et~al.(2010)Li, Chu, Langford, and Schapire]{li2010contextual}
+L.~Li, W.~Chu, J.~Langford, and R.~E. Schapire.
+\newblock A contextual-bandit approach to personalized news article
+  recommendation.
+\newblock In \emph{International Conference on World Wide Web}, pages 661--670,
+  2010.
+
+\bibitem[Melo and Ribeiro(2007)]{melo2007q}
+F.~S. Melo and M.~I. Ribeiro.
+\newblock {Q}-learning with linear function approximation.
+\newblock In \emph{International Conference on Computational Learning Theory},
+  pages 308--322. Springer, 2007.
+
+\bibitem[Mnih et~al.(2013)Mnih, Kavukcuoglu, Silver, Graves, Antonoglou,
+  Wierstra, and Riedmiller]{mnih2013playing}
+V.~Mnih, K.~Kavukcuoglu, D.~Silver, A.~Graves, I.~Antonoglou, D.~Wierstra, and
+  M.~Riedmiller.
+\newblock Playing {A}tari with deep reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:1312.5602}, 2013.
+
+\bibitem[Mnih et~al.(2016)Mnih, Badia, Mirza, Graves, Lillicrap, Harley,
+  Silver, and Kavukcuoglu]{mnih2016asynchronous}
+V.~Mnih, A.~P. Badia, M.~Mirza, A.~Graves, T.~Lillicrap, T.~Harley, D.~Silver,
+  and K.~Kavukcuoglu.
+\newblock Asynchronous methods for deep reinforcement learning.
+\newblock In \emph{International Conference on Machine Learning}, pages
+  1928--1937, 2016.
+
+\bibitem[Osband and Van~Roy(2016)]{osband2016lower}
+I.~Osband and B.~Van~Roy.
+\newblock On lower bounds for regret in reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:1608.02732}, 2016.
+
+\bibitem[Osband et~al.(2014)Osband, Van~Roy, and Wen]{osband2014generalization}
+I.~Osband, B.~Van~Roy, and Z.~Wen.
+\newblock Generalization and exploration via randomized value functions.
+\newblock \emph{arXiv preprint arXiv:1402.0635}, 2014.
+
+\bibitem[Puterman(2014)]{puterman2014markov}
+M.~L. Puterman.
+\newblock \emph{{M}arkov Decision Processes: Discrete Stochastic Dynamic
+  Programming}.
+\newblock John Wiley \& Sons, 2014.
+
+\bibitem[Rusmevichientong and Tsitsiklis(2010)]{rusmevichientong2010linearly}
+P.~Rusmevichientong and J.~N. Tsitsiklis.
+\newblock Linearly parameterized bandits.
+\newblock \emph{Mathematics of Operations Research}, 35\penalty0 (2):\penalty0
+  395--411, 2010.
+
+\bibitem[Schulman et~al.(2015)Schulman, Levine, Abbeel, Jordan, and
+  Moritz]{schulman2015trust}
+J.~Schulman, S.~Levine, P.~Abbeel, M.~Jordan, and P.~Moritz.
+\newblock Trust region policy optimization.
+\newblock In \emph{International Conference on Machine Learning}, pages
+  1889--1897, 2015.
+
+\bibitem[Sidford et~al.(2018)Sidford, Wang, Wu, and Ye]{sidford2018variance}
+A.~Sidford, M.~Wang, X.~Wu, and Y.~Ye.
+\newblock Variance reduced value iteration and faster algorithms for solving
+  {M}arkov decision processes.
+\newblock In \emph{ACM-SIAM Symposium on Discrete Algorithms}, pages 770--787,
+  2018.
+
+\bibitem[Silver et~al.(2016)Silver, Huang, Maddison, Guez, Sifre, Van
+  Den~Driessche, Schrittwieser, Antonoglou, Panneershelvam, Lanctot,
+  et~al.]{silver2016mastering}
+D.~Silver, A.~Huang, C.~J. Maddison, A.~Guez, L.~Sifre, G.~Van Den~Driessche,
+  J.~Schrittwieser, I.~Antonoglou, V.~Panneershelvam, M.~Lanctot, et~al.
+\newblock Mastering the game of {G}o with deep neural networks and tree search.
+\newblock \emph{Nature}, 529\penalty0 (7587):\penalty0 484--489, 2016.
+
+\bibitem[Strehl et~al.(2006)Strehl, Li, Wiewiora, Langford, and
+  Littman]{strehl2006pac}
+A.~L. Strehl, L.~Li, E.~Wiewiora, J.~Langford, and M.~L. Littman.
+\newblock {PAC} model-free reinforcement learning.
+\newblock In \emph{International Conference on Machine Learning}, pages
+  881--888, 2006.
+
+\bibitem[Sutton(1988)]{sutton1988learning}
+R.~S. Sutton.
+\newblock Learning to predict by the methods of temporal differences.
+\newblock \emph{Machine Learning}, 3\penalty0 (1):\penalty0 9--44, 1988.
+
+\bibitem[Sutton and Barto(2011)]{sutton2011reinforcement}
+R.~S. Sutton and A.~G. Barto.
+\newblock \emph{Reinforcement Learning: An Introduction}.
+\newblock MIT Press, 2011.
+
+\bibitem[Szepesv{\'a}ri(2010)]{szepesvari2010algorithms}
+C.~Szepesv{\'a}ri.
+\newblock Algorithms for reinforcement learning.
+\newblock \emph{Synthesis Lectures on Artificial Intelligence and Machine
+  Learning}, 4\penalty0 (1):\penalty0 1--103, 2010.
+
+\bibitem[Tsitsiklis and Van~Roy(1997)]{tsitsiklis1997analysis}
+J.~N. Tsitsiklis and B.~Van~Roy.
+\newblock Analysis of temporal-diffference learning with function
+  approximation.
+\newblock In \emph{Advances in Neural Information Processing Systems}, pages
+  1075--1081, 1997.
+
+\bibitem[Vershynin(2010)]{vershynin2010introduction}
+R.~Vershynin.
+\newblock Introduction to the non-asymptotic analysis of random matrices.
+\newblock \emph{arXiv preprint arXiv:1011.3027}, 2010.
+
+\bibitem[Wainwright(2019)]{wainwright2019variance}
+M.~J. Wainwright.
+\newblock Variance-reduced {Q}-learning is minimax optimal.
+\newblock \emph{arXiv preprint arXiv:1906.04697}, 2019.
+
+\bibitem[Wang et~al.(2019)Wang, Ye, Geng, and Rudin]{wang2019towards}
+T.~Wang, W.~Ye, D.~Geng, and C.~Rudin.
+\newblock Towards practical {L}ipschitz stochastic bandits.
+\newblock \emph{arXiv preprint arXiv:1901.09277}, 2019.
+
+\bibitem[Wen and Van~Roy(2013)]{wen2013efficient}
+Z.~Wen and B.~Van~Roy.
+\newblock Efficient exploration and value function generalization in
+  deterministic systems.
+\newblock In \emph{Advances in Neural Information Processing Systems}, pages
+  3021--3029, 2013.
+
+\bibitem[Wen and Van~Roy(2017)]{wen2017efficient}
+Z.~Wen and B.~Van~Roy.
+\newblock Efficient reinforcement learning in deterministic systems with value
+  function generalization.
+\newblock \emph{Mathematics of Operations Research}, 42\penalty0 (3):\penalty0
+  762--782, 2017.
+
+\bibitem[Yang and Wang(2019{\natexlab{a}})]{yang2019sample}
+L.~Yang and M.~Wang.
+\newblock Sample-optimal parametric {Q}-learning using linearly additive
+  features.
+\newblock In \emph{International Conference on Machine Learning}, pages
+  6995--7004, 2019{\natexlab{a}}.
+
+\bibitem[Yang and Wang(2019{\natexlab{b}})]{yang2019reinforcement}
+L.~F. Yang and M.~Wang.
+\newblock Reinforcement leaning in feature space: Matrix bandit, kernels, and
+  regret bound.
+\newblock \emph{arXiv preprint arXiv:1905.10389}, 2019{\natexlab{b}}.
+
+\bibitem[Zhu and Dunson(2019)]{zhu2019lipschitz}
+X.~Zhu and D.~B. Dunson.
+\newblock {L}ipschitz bandit optimization with improved efficiency.
+\newblock \emph{arXiv preprint arXiv:1904.11131}, 2019.
+
+\end{thebibliography}

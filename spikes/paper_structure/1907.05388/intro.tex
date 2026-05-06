@@ -1,0 +1,64 @@
+%!TEX root = mainQlin.tex
+
+
+\section{Introduction}
+Reinforcement Learning (RL) is a control-theoretic problem in which an agent tries to maximize
+its expected cumulative reward by interacting with an unknown environment over time \cite{sutton2011reinforcement}.
+Modern RL commonly engages practical problems with an enormous number of states, where \emph{function approximation}
+% , typically using deep neural networks, 
+must be deployed to approximate the \emph{(action-)value function}---the expected cumulative reward
+starting from a state-action pair---or the \emph{policy}---the mapping from a state to its subsequent action. Function approximation, especially based on deep neural networks, lies at the heart of the recent practical successes of RL in domains such as Atari games \cite{mnih2013playing}, Go \cite{silver2016mastering}, robotics \cite{kober2012reinforcement}, and dialogue systems \cite{li2016deep}. Moreover, deep neural networks serve as essential components of generic deep RL algorithms, including Deep Q-Network (DQN) \cite{mnih2013playing}, Asynchronous Advantage Actor-Critic (A3C) \cite{mnih2016asynchronous}, and Trust Region Policy Optimization (TRPO) \cite{schulman2015trust}.
+
+%\cnote{add citations.}
+
+Despite the empirical successes of function approximation in RL, 
+most existing theoretical guarantees apply only to \emph{tabular} 
+RL \cite[see, e.g.,][]{jaksch2010near,osband2014generalization,azar2017minimax,
+jin2018q}, in which the states and actions are discrete, and the value 
+function is represented by a table. Due to the  
+curse of dimensionality, only relatively small problems can be tackled by tabular RL.  Thus, researchers have turned to function 
+approximation~\cite[see, e.g.,][]{sutton1988learning, bradtke1996linear, 
+tsitsiklis1997analysis}, in theory and in practice.  While function approximation greatly expands the potential
+reach of RL, particularly via deep RL architectures, it 
+raises a number of fundamental theoretical challenges.  For example,
+while the effective state and action spaces can be much larger when function approximation is used, the neighborhoods 
+of most states are not visited even once during a set of learning episodes, which makes it difficult to obtain reliable estimates of value functions~\cite[see, e.g.,][]{sutton2011reinforcement, szepesvari2010algorithms, lattimore2018bandit}. To cope with this challenge, relatively simple function classes, including linear function classes, are often used. This introduces, however, a bias, even in the limit of infinite training data, given that the optimal value function and policy may not be linear~\cite[see, e.g.,][]{baird1995residual, boyan1995generalization, tsitsiklis1997analysis}. Thus, both in theory and in practice, the design of RL systems must cope with fundamental statistical problems of sparsity and misspecification, all in the context of a dynamical system.  Moreover, a core distinguishing feature of RL is that it requires addressing the tradeoff between exploration and exploitation.  Addressing this tradeoff algorithmically requires exactly the kinds of statistical estimates that are challenging to obtain in the RL setting due to sparsity, misspecification, and dynamics.  Thus the following fundamental question remains open: %\cnote{Add citations in this paragraph.}
+\begin{center}
+\textbf{Is it possible to design provably efficient RL algorithms in the function approximation setting?}
+\end{center}
+By ``efficient'' we mean efficient in both runtime and sample complexity---the runtime and the sample complexity should not depend on the number of states, but should depend instead on an intrinsic complexity measure of the function class.  
+
+Several recent attempts have been made to attack this fundamental problem. However, they either require the access to a ``simulator'' \cite{yang2019sample} which alleviates the difficulty of exploration, or assume the transition dynamics to be deterministic \cite{wen2013efficient,wen2017efficient}, to have a low variance \cite{du2019provably}, or are parametrizable by a relatively small matrix \cite{yang2019reinforcement}, which alleviates the difficulty in estimating the transition dynamics (see Section \ref{sec:related} for more details).
+
+% model can be parametrized by a small matrix which can be now estimated accurately \cite{yang2019reinforcement}. Several works also consider a more general setting without Assumption \ref{assumption:linear}, but they rely on transition dynamics to be deterministic \cite{wen2013efficient,wen2017efficient} or have low variance \cite{du2019provably} which could be restrictive in practice.
+
+
+% Most existing positive results on efficient RL in such a basic yet fundamental linear setting require either additional oracles or stronger assumptions. In a recent breakthrough, Yang and Wang \cite{yang2019sample} propose an efficient algorithm assuming the access to a ``simulator'', which alleviates the difficulty of exploration by allowing the algorithm to query arbitrary state-action pairs. Very recently, Yang and Wang \cite{yang2019reinforcement} propose another efficient algorithm under the additional assumption that the transition model can be parameterized by a low-rank matrix, which needs to be estimated accurately in their algorithm. 
+
+
+%In concurrent work, Du et al. \cite{du2019provably} propose an efficient algorithm based on a separation oracle that checks the shift of state distributions. See Section \ref{sec:related} for more related results. (1. ``almost'' deterministic, 2. polynomial without specifying dependence, sqrt{T} regret)
+
+%More specifically, Wen and Van Roy \cite{wen2013efficient, wen2017efficient} present efficient guarantees in the general linear setting without requiring MDP to have a linear structure. However, their results assume MDP to be fully deterministic which are rather restrictive in practice.
+
+%mode-free
+
+Focusing on a linear setting in which the transition dynamics and reward function are assumed to be linear, we present the first algorithm that is provably efficient in both runtime and sample complexity, without requiring additional oracles or stronger assumptions. Concretely, in the general setting of an episodic Markov Decision Process (MDP), we prove that an optimistic version of Least-Squares Value Iteration (LSVI) \cite{bradtke1996linear,osband2014generalization}---a classical algorithm frequently studied in the linear setting---achieves $\tilde{\mathcal{O}}(\sqrt{d^3H^3T})$ regret, where $d$ is the ambient dimension of feature space, $H$ is the length of each episode, $T$ is the total number of steps, and $\tilde{\cO}(\cdot)$ hides only absolute constant and poly-logarithmic factors. Importantly, such regret is independent of $S$ and $A$---the number of states and actions. Our algorithm runs in $\cO(d^2 AKT)$ time and $\cO(d^2H + dAT)$ space, which are again independent of $S$ and thus efficient in practice. In addition, our result is robust to the linear assumption: When the underlying transition model is not linear, but $\zeta$-close to linear in total variation distance (Assumption \ref{assumption:nearly_linear}), our algorithm achieves $\tilde{\mathcal{O}}(\sqrt{d^3 H^3 T} + \zeta dHT)$ regret. That is, in addition to the standard $\sqrt{T}$ regret, the algorithm also suffers from a linear regret term that scales with an error $\zeta$ that arises due to the function class misspecification. 
+
+%In addition to 
+
+% \cnote{Also talk about misspecified results.}
+
+% To our best knowledge, no exisiting results have presented a provable efficient algorithm in this setting without requiring a ``simulator'', or additional assumptions.
+
+
+
+% Our results
+
+
+% The strategic use of structure information within the problem and the function class become the key in both planning and exploration.  
+
+
+%  (2) the transition probability can no longer be estimated accurately due to the large number of states (many states may not even be visited once throughout the training), and a \emph{model-free} approaches must be used; (3) use structure
+% sample, runtime efficient
+% existence elusive
+
