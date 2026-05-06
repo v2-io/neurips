@@ -274,57 +274,54 @@ Last-resort escape: `{::nomarkdown} ... {:/nomarkdown}` blocks pass through verb
 
 ---
 
-## 5. NeurIPS submission essentials
+## 5. NeurIPS rules per-paper agents act on
 
-*Distilled from `~/src/neurips2026/common/neurips-main-track-handbook.md` (~76 KB; the authoritative source). What's here is the migration-agent-relevant slice — when in doubt, the original handbook governs.*
+*The full handbook is at `~/src/neurips2026/common/neurips-main-track-handbook.md` (~76 KB; authoritative). What's here is the slice that drives per-paper-agent decisions. Owner-level concerns (track-option choice, AI-use disclosure, camera-ready additions, PDF size envelopes, etc.) live with the build-pipeline owner — surface anything via the umbrella `MIGRATE-TODO.md` if it lands in your lap and you're not sure.*
 
-### 5.1 Page limit + structure
+### 5.1 Page limit
 
-- **9 pages** of main content. Figures and tables count toward the limit; references, acknowledgments, optional technical appendices, and the paper checklist do **not** count. Exceeding the page limit = desk rejection.
-- **Single PDF**, in this order: paper body → references → optional appendices → NeurIPS paper checklist (last). Checklist must be present (its absence is desk rejection).
-- **+1 page** allowed for camera-ready (10 pages of content). Title / abstract editable but cannot "substantially differ" from submission.
+**9 pages** of main content. Figures and tables count toward the limit; references, acknowledgments, optional technical appendices, and the paper checklist do **not** count. Exceeding = desk rejection. This is what drives the `OUT.neurips-2026-paper.md` trim manifest's existence; segments that don't fit get omitted from that manifest (still present in `OUT.full-paper.md`).
 
-### 5.2 Style file + tracks
+### 5.2 Single-PDF order — drives manifest structure
 
-- Must use `neurips_2026.sty` (the canonical sty in `common/`; do **not** modify — modifications are grounds for desk rejection).
-- Track options at submission: `\usepackage{neurips_2026}` (default = main, anonymized). At camera-ready, add `final`. Other tracks: `position`, `eandd` (Evaluations & Datasets), `creativeai`, workshops `sglblindworkshop` / `dblblindworkshop`. Preprint version (e.g., for arXiv): `\usepackage[preprint]{neurips_2026}`.
-- Authors don't touch the sty; the build pipeline at `bin/build` injects per-paper preamble additions (theorem environments, cleveref, fontspec, hyperref settings, custom `\citet`) without modifying the canonical sty.
+In the assembled PDF, the order is: paper body → references → optional appendices → NeurIPS paper checklist (last). Manifest tables follow this order: numbered Section rows first, then a `Bibliography` row, then `Appendix` rows, then a `Checklist` row last. Build pipeline injects `\appendix` and `\newpage` directives at the right boundaries.
 
-### 5.3 Anonymization (double-blind)
+### 5.3 Anonymization
 
-- No author identifiers in the submitted PDF. The default `\usepackage{neurips_2026}` suppresses author block automatically.
-- **No `\begin{ack}` content** at submission (use the `ack` environment in source so it's auto-suppressed; restore at camera-ready).
-- **Third-person self-citation.** "In the previous work of Jones et al. [4]," not "In our previous work [4]." Cite your own prior work like any other.
-- **Self-citation prohibition** for the ASF working paper (Zenodo DOI `10.5281/zenodo.19986312`). Citing it = double-blind violation. `bin/refs lint` enforces.
-- **Anonymization vocabulary** (§3.5 above): Personal / Framework / ELI / Reviewer-priming categories all scanned by `bin/refs lint` against `refs/deny-list.yml`.
+- **Third-person self-citation.** "In the previous work of Jones et al. [4]," not "In our previous work [4]." Cite your own prior work like anyone else's.
+- **Self-citation prohibition** for the ASF working paper (Zenodo DOI `10.5281/zenodo.19986312`). Citing it is a double-blind violation. `bin/refs lint` enforces.
+- **Anonymization vocabulary** (§3.5 above): Personal / Framework / ELI / Reviewer-priming categories. `bin/refs lint` scans both segment source and bib entries against `refs/deny-list.yml`.
+- **No `\begin{ack}` content** at submission. The `ack` callout (§1.3) is auto-suppressed in anonymized builds; just leave the content there for camera-ready.
 
-### 5.4 AI-use disclosure
+### 5.4 Contemporaneous-work cutoff
 
-NeurIPS 2026 handbook §"Author Use of Agents and LLMs": *"Use of spell checkers and grammar suggestions, aid for editing purposes, and basic code assistance does not need to be documented."* Methodological disclosure is required only when AI is *"an important, original, or non-standard component of the approach."*
+**March 1, 2026.** Papers appearing online before this date are **prior work** — cite and distinguish (full cite-and-distinguish treatment in related-work). Papers after are **contemporaneous** — cite them, but the submission isn't required to empirically beat them. This drives related-work writing.
 
-Our use is collaborative drafting + editing aid → **no methodological disclosure section** in the main text. Acknowledgments can mention AI assistance generally (camera-ready only; suppressed at submission).
+### 5.5 Paper checklist — fill in what you know
 
-**Hallucinated citations are a Code-of-Conduct violation** — desk-rejection grade. Every entry in `refs/entries/<bibkey>.yml` must be verified before submission (`bin/refs verify <key> bib-fields|doi-resolves|claim-supported|page-ref --by ... --outcome verified`).
+The NeurIPS Paper Checklist is required (its absence = desk rejection). Per-paper agents should fill in answers for everything they know about their paper:
 
-### 5.5 Contemporaneous-work cutoff
+- **Claims** — do main claims in the abstract / intro accurately reflect contributions and scope? (Theory papers: yes if claims match what theorems prove.)
+- **Limitations** — discussed honestly in the paper? (Yes for theory papers with named scope conditions.)
+- **Theory** — if the paper presents theoretical results, are full proofs available? (Yes; main proofs in body or appendix, sketches link to appendix.)
+- **Reproducibility, Code, Data** — for theory-only papers, often **N/A** with a one-line justification.
+- **Resources, Ethics, Societal Impact** — answer based on what the paper actually does. "N/A" with justification is fine; just don't skip.
 
-March 1, 2026. Papers appearing online before this date are **prior work** — must be cited and distinguished. Papers after are **contemporaneous** — should be cited, but the submission isn't required to empirically beat them.
+Answer **every** question (yes / no / N/A) with a brief justification. The checklist itself lives at `common/checklist.tex` (canonical, ~26 KB); how it gets wired into the build is `PIPELINE-TODO.md` §A4 — the build-pipeline owner handles that wiring.
 
-### 5.6 Reviewer-recommendation, conflicts of interest
+### 5.6 What the build pipeline handles — and how to ask for more
 
-OpenReview lets authors suggest reviewers + flag conflicts. All affiliations from the last three years must appear in OpenReview's "Education & Career History."
+The build (`bin/build`) takes care of:
 
-### 5.7 PDF + supplementary size
+- The right sty file (`common/neurips_2026.sty`, canonical, do not modify) and track options.
+- Preamble setup: `amsmath`, `amssymb`, `amsthm` with theorem / lemma / corollary / proposition / definition / remark environments under a shared counter; `cleveref` with `\Cref` / `\crefname` for the type-aware references; `fontspec` + TeX Gyre Termes for Unicode; `hyperref{hidelinks}` to suppress link boxes; natbib `super,sort&compress` with `\citet` redefined for the `Author Year [N]` form.
+- `\appendix` / `\newpage` injection from manifest types.
+- bibtex / lualatex compile passes.
+- Anonymization for default builds (author block suppressed automatically).
 
-PDF ≤ 50 MB. Supplementary ZIP (figures, code, raw data, extended appendices) ≤ 100 MB. Per-paper supplementary builder is `bin/build-supplementary` (deferred port from old workspace; see `PIPELINE-TODO.md` §E4).
+If you need something the preamble doesn't have — a missing package, a new theorem-style environment (`\newtheorem{conjecture}[theorem]{Conjecture}` for example), a `\crefname` entry for some custom env, a font weight, a math symbol from an exotic package, anything — **ask Joseph and the build-pipeline owner will add it to the preamble.** Don't try to inject preamble bits from segment source; the segment-author / build-owner separation matters for cross-paper consistency.
 
-### 5.8 Camera-ready (post-acceptance)
-
-Required at camera-ready, **not** at submission:
-- **Funding Transparency Statement** — disclose third-party funding/support during the last 36 months for the work, plus competing-interest financial relationships outside the work in the same window.
-- **Acknowledgments** restored.
-- **Lay summary** — paragraph-length, jargon-free, aimed at general public.
-- **+1 page** to 10 total content pages.
+Same channel for build issues — if something compiles wrong or renders weirdly, `MIGRATE-TODO.md` flag at the umbrella level (or a per-paper `TODO.md` flag for paper-specific weirdness).
 
 ---
 
