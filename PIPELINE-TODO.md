@@ -8,11 +8,8 @@ Items are tagged by category. Open items live here; completed items move into co
 
 ## A. Visible-in-current-test-PDF (`00-test-paper/out/test.pdf`)
 
-- [ ] **A1. `\Cref{...}` inside backtick code-spans renders as actual LaTeX, producing `??` in PDF.** The B-supplementary segment has `` `\Cref{...}` `` as a literal example in prose; converter passes through the backslash because of our raw-TeX policy, but inside a codespan the backslash should *always* escape — codespans are the escape hatch. Override `convert_codespan` to apply full escaping (backslash + braces + dollar + the existing chars) regardless of our outer escape policy.
-
-- [ ] **A2. Verify em-dash / en-dash / hyphen rendering visually.** `pdftotext` extraction shows "test paperits job" (em-dash gone), "247258" (en-dash gone), "19852005" (en-dash gone) — but this might be a `pdftotext` extraction quirk rather than a real rendering issue. Open the PDF visually; if the dashes ARE missing, debug font / pandoc-vs-kramdown / inputenc handling.
-
-- [ ] **A3. Verify special-character rendering visually.** `pdftotext` output shows "ojasiewicz" / "encov" / "BretagnolleHuber" — likely also a `pdftotext` quirk (UTF-8 → Latin-1 transcoding loses combining diacritics on extraction), but worth confirming the actual PDF shows Łojasiewicz / Čencov / Bretagnolle–Huber correctly. Lualatex with UTF-8 source *should* handle these natively.
+- [x] **A1.** `convert_codespan` override applies full escape inside backticks — done `ad2b025`.
+- [x] **A2/A3.** Real dash/diacritic rendering bug (not pdftotext): switched to `fontspec` + `TeX Gyre Termes` for full Unicode coverage — done `0dcc717`.
 
 - [ ] **A4. Wire in the real NeurIPS 2026 paper checklist.** The current `00-test-paper/src/checklist.tex` is a 6-item stub. The canonical checklist is `common/checklist.tex` (~26 KB, detailed multi-question form). Decide whether to (a) include `common/checklist.tex` directly via a manifest row, or (b) segment per checklist question for fillability (questions become individual `src/checklist-NN.md` files referenced from a manifest). Option (b) is more aligned with the segmented-paper philosophy but heavier upfront.
 
@@ -24,16 +21,10 @@ Items are tagged by category. Open items live here; completed items move into co
 
 The build pipeline's lint pass should warn on (or convert / strip) authoring patterns the rules say to avoid.
 
-- [ ] **B1. Manual heading numbering** — `## 3. The Lyapunov-Survival ...` violates AUTHORING §1.8. Lint should warn; converter could optionally strip the leading `N.` / `N.M ` prefix (or just warn).
-
-- [ ] **B2. Bold-prefix paragraph headings** — `**Two regimes.** body` should auto-convert to `\paragraph{Two regimes} body` per AUTHORING §1.9. Detection rule: bold span at paragraph start, terminated by period, followed by space + continuation. Implement in `convert_p` (or as a preprocessor that wraps in `\paragraph{}`).
-
-- [ ] **B3. Manual `\tag{N}` in display math** — violates AUTHORING §1.7. Lint should warn ("use `^eq-anchor` and `[[#^eq-anchor]]` instead of `\tag{}`"); existing papers will need migration.
-
-- [ ] **B4. Anonymization vocabulary scanner** — fold the four-category check (Personal / Framework / ELI / Reviewer-priming) from old workspace's `bin/check-anonymization` into the build's lint pass. Source pass scans `src/*.md`; PDF pass remains a separate post-build step (`pdftotext | grep`).
-
-- [ ] **B5. ASF self-citation prohibition** — lint should flag any occurrence of the Zenodo DOI `10.5281/zenodo.19986312` or `ASF` / `AAD` (as framework names) in segment source.
-
+- [x] **B1.** Manual heading numbering lint warning in `convert_header` — done `a5756c5`.
+- [x] **B2.** Bold-prefix paragraph headings auto-converted in `convert_p` (top-level only; list-item / blockquote context skipped) — done `56b0960`.
+- [x] **B3.** Manual `\tag{N}` lint warning in `convert_math` — done `a5756c5`.
+- [x] **B4 / B5.** Segment-source anonymization scanner using `refs/deny-list.yml` (DOIs, authors, proper-nouns) — done `c7a8d60`. PDF-level scan stays a separate post-build step.
 - [ ] **B6. `[!figure]` callout body resolution** — currently emits body verbatim. Should detect markdown image link `![alt](path)` inside the callout body and render as `\includegraphics[width=...]{path}` with caption / label from the marker. Image path resolution: relative to paper-dir.
 
 ## C. Phase B converter work
@@ -51,7 +42,7 @@ The build pipeline's lint pass should warn on (or convert / strip) authoring pat
 
 - [ ] **C3. Numeric vs author-year citation rendering** — one-line natbib option (`\PassOptionsToPackage{numbers,sort&compress}{natbib}`) reclaims ~1–3 pp on dense papers; per-paper choice via meta.md frontmatter (`citation_style: numeric` vs `author-year`).
 
-- [ ] **C4. Anchored equations** — `$$ ... $$ ^eq-name` syntax → `\label{eq-name}` after the math; `[[#^eq-name]]` → `\eqref{eq-name}` instead of `\Cref{eq-name}` (since equation refs traditionally appear as "(7)" not "Equation 7"). Distinguish by anchor prefix or by the labeled element type.
+- [x] **C4.** Anchored equations: `$$ ... $$ ^eq-name` rewritten to `\begin{equation}\label{}...\end{equation}` (or `\begin{align}\label{}...\end{align}` for `aligned` content); `eq-` prefixed cross-refs route to `\eqref{}` instead of `\Cref{}` — done `1468878`.
 
 - [ ] **C5. Cleveref config audit** — verify `\Cref` produces the right type label for every callout type (theorem / lemma / corollary / proposition / definition / remark / table / figure / section / equation / appendix). Some may need explicit `\crefname{}` / `\Crefname{}` setup beyond the current preamble defaults.
 

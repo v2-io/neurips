@@ -6,6 +6,22 @@ For active backlog see `MIGRATE-TODO.md` (restructure / per-paper / docs) and `P
 
 ---
 
+## 2026-05-05 — Migration-agent prep: cite-migration tool + lint rules + anchored equations
+
+While migration agent #1 spins up, knocked through the most-blocking PIPELINE-TODO items so they land in cleaner working conditions:
+
+- **`bin/migrate-cites`** (`3f98329`) — sweeps `[Author Year]` / `Author [Year]` patterns in segment source against `refs/entries/`, proposes `\cite{}` / `\citet{}` replacements, flags ambiguous and missing for human disambiguation. Dry-run by default; `--apply` rewrites in place. Closes `PIPELINE-TODO §C1.4`, the most-blocking piece for per-paper content migration.
+- **Bold-prefix paragraph headings** (`56b0960`) — `convert_p` auto-converts `**Term.** body...` at paragraph start to `\paragraph{Term} body...` per AUTHORING §1.9. Limited to top-level paragraphs (children of `:root`); list-item / blockquote / table-cell paragraphs skipped (would emit `\item{} \paragraph{...}` and break LaTeX structure — caught by build failure on the test paper's numbered lists).
+- **Manual heading numbering + `\tag{N}` lint** (`a5756c5`) — `convert_header` warns when title starts with `N.` / `N.M`; `convert_math` warns on `\tag{}` / `\tag*{}`. Migration agents see warnings during their build cycle and strip during their pass.
+- **Anchored equations + `eq-` cross-ref routing** (`1468878`) — `$$ ... $$ ^eq-name` source rewrites to `\begin{equation}\label{eq-name}...\end{equation}` (numbered) at the segment-prep level; multi-line `aligned` content becomes `\begin{align}` (also numbered). `[[#^eq-name]]` cross-refs route to `\eqref{}` (parenthesized number) instead of `\Cref{}` (typed noun) when the anchor starts with `eq-`. Closes AUTHORING §1.7 + §2.2 conventions.
+- **Segment-side anonymization scanner** (`c7a8d60`) — loads `refs/deny-list.yml` (DOIs, authors, proper-nouns), scans every segment's source before kramdown, surfaces violations through `@lint_findings`. Build-side complement to `bin/refs lint`.
+
+Net `PIPELINE-TODO` state after this stretch: §A1–A3 done; §B1–B5 done; §C1.4 + §C4 done; remaining open: A4 (real NeurIPS checklist wiring), A5/A6 (visual verifications), B6 (`[!figure]` image-link resolution), C2/C3/C5/C6 (refs/citation-form-switch / cleveref audit / paragraph interaction), E1–E5 (old-workspace tooling ports), F1–F5 (bib database deferred follow-ups).
+
+Migration agent arriving now has all the convention-enforcement infrastructure they need.
+
+---
+
 ## 2026-05-05 — Umbrella created; pipeline + bib system in place; docs consolidated
 
 **Umbrella structure landed.** New repository at `~/src/neurips/` with three per-paper submodules backed by independent GitHub repos (`v2-io/paper-tragedy-confident-agent`, `v2-io/paper-unified-convergence-rl`, `v2-io/paper-llm-hallucinate-bound`). Hybrid numbered + multi-word slug naming (`0N-{slug}/` inside the umbrella, `paper-{slug}` on GitHub). Migration recipe captured in `_archive/MIGRATION.md` (preserved for provenance) and condensed in `AUTHORING.md` §8 for future migration agents. *Commits 6819b90 → ba23e42 → 0bfeb85 → bfa5bee.*
