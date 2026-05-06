@@ -331,7 +331,7 @@ With `[theorem]` linkage every theorem-like environment shares the `theorem` cou
 
 **Workaround on per-paper side.** Authors can write the type noun in prose around `[[#^anchor]]` to override (e.g., "Lemma [[#^lem-persistence-d]] (ii)" rendering as "Lemma Theorem 2.1 (ii)" — bad; or drop cleveref auto-name and use `\ref{}` form — would require a different source convention). Neither is good. **The pipeline-side fix is essentially mandatory** before the cross-reference apparatus is trustworthy.
 
-**Status:** OPEN
+**Status:** RESOLVED-IN-`1352759`. Applied the migration agent's documented aliascnt recipe — every theorem-like env now gets its own counter NAME (aliased to the same numeric counter), so cleveref reads `lemma` / `definition` / etc. from .aux. Verified on 01-tragedy: rendered PDF now shows "Definition 3.1" (×19), "Lemma 2.1" (×7), "Proposition 4.2" (×10), "Theorem 4.1" (×13) etc. — correctly typed.
 
 ### [03-llm-hallucinate-bound] `\cite[postnote]{key}` form breaks under super-style natbib — flagged 2026-05-06 by 03-llm-hallucinate migration agent
 
@@ -357,4 +357,4 @@ Reproduces on:
 
 **Ask.** Inspect bin/build's natbib config (`super,sort&compress`); the natbib `super` style may need a `\bibpunct` tweak or the `\cite` redefinition may be eating the optional argument. Standard natbib should pass `[Theorem N]` through to the bibtex-rendered citation as a tail postnote (rendered as ⁽¹⁰,Thm.6.3⁾ or similar in super-style). The current behavior — leaking the optional argument into text-mode output — looks like a `\cite` redefinition bug rather than a natbib option issue.
 
-**Status:** OPEN
+**Status:** RESOLVED-IN-`1352759`. Migration agent's diagnosis correct — our custom `\citet` redef declared only one arg (`[1]`) and silently dropped the optional postnote. Fixed by declaring optional first arg with default empty: `\renewcommand{\citet}[2][]{\citeauthor{#2}~\citeyear{#2}\citep[#1]{#2}}` — postnote now passes through to the underlying `\citep`. Verified in 03-llm-hallucinate render: "Tsybakov 2009 [39] Lemma 2.4" appears correctly.
