@@ -692,9 +692,14 @@ class Builder
     # `\author{}` examples.
     template = template.sub(/^\\author\{.*?\n\}\n/m) { "#{render_author_block(meta)}\n" }
 
-    # Replace abstract
+    # Replace abstract — run through the same kramdown→LaTeX pipeline as
+    # segment bodies so authoring conventions ($..$ inline math, *emph*,
+    # **strong**, smart quotes, em-dashes) all render correctly. Without
+    # this, *emph* lands in the PDF as literal asterisks (caught by the
+    # 03-llm-hallucinate migration agent on first build, 2026-05-05).
+    abstract_tex = render_inline_markdown(meta.abstract)
     template = template.sub(/\\begin\{abstract\}.*?\\end\{abstract\}/m) do
-      "\\begin{abstract}\n#{meta.abstract}\n\\end{abstract}"
+      "\\begin{abstract}\n#{abstract_tex}\n\\end{abstract}"
     end
 
     # Citation options BEFORE \usepackage{neurips_2026} (sty loads natbib internally,
@@ -714,6 +719,14 @@ class Builder
     template.sub(/(\\end\{abstract\}\n).*?(\\end\{document\})/m) do
       "#{Regexp.last_match(1)}\n#{body_tex}\n#{Regexp.last_match(2)}"
     end
+  end
+
+  # Same kramdown→LaTeX pipeline used for segment bodies, exposed for the
+  # abstract (and any other inline-markdown metadata that needs rendering).
+  def render_inline_markdown(text)
+    doc = Kramdown::Document.new(text, input: "NeurIPS")
+    out, _warnings = doc.to_neurips
+    out.strip
   end
 
   def render_author_block(meta)
