@@ -15,7 +15,7 @@ Items are tagged by category. Open items live here; completed items move into co
 
 - [x] **A5. "Anonymous Author(s)" title-block confirmed correct for default build** — verified 2026-05-06 across all three papers. `pdftotext` of each `out/full-paper.pdf` shows "Anonymous Author(s) / Affiliation / Address / email" — the neurips_2026 sty's default anonymized rendering is in effect. PDF-content scan against the personal-info deny list (Joseph / Wecker / 0009-0004 ORCID / v2-io / ASF Zenodo DOI) returns clean across all three papers (the one "Joseph" hit in 02 is "Joseph Y. Halpern" inside a citation — legitimate). The `final` option for camera-ready author-block insertion remains a separate future need (will require build-flag wiring + meta.md author-block injection); deferred until camera-ready phase.
 
-- [ ] **A6. Footnote `[^lmi]` rendering — verify** that the kramdown markdown footnote `[^lmi]` and definition `[^lmi]: ...` render correctly in the PDF. The pdftotext output shows "framework1" suggesting the footnote marker landed; spot-check the footnote text body in the visual PDF.
+- [x] **A6. Footnote rendering confirmed** — verified 2026-05-06. `pdftotext 00-test-paper/out/test.pdf` shows the rendered footnote body `1 LMI = Linear Matrix Inequality. Footnote rendered via raw TeX \footnote{} is also fine; this is the markdown form.` correctly placed at page bottom. The marker `[^lmi]` in source emits as a `\footnotemark` and the definition `[^lmi]: ...` emits as `\footnotetext`. Both forms (markdown `[^id]` and raw `\footnote{}`) work; AUTHORING §2.4 can document either.
 
 ## B. AUTHORING.md rules not yet enforced
 

@@ -240,7 +240,15 @@ The legacy `[Author Year]` source convention from the prior workspace is depreca
 
 ### 2.4 Footnotes
 
-*Open (#10 in the rule discussion):* first-use convention; may go with markdown form `[^id]` (kramdown handles natively) or raw `\footnote{}`. Existing papers use neither; will firm up when first author needs one.
+Both forms work; pick whichever reads better in source.
+
+```
+The Lyapunov-LMI framework[^lmi] established by ...
+
+[^lmi]: LMI = Linear Matrix Inequality.
+```
+
+is the markdown form — kramdown handles it natively, definition can live anywhere in the segment. The raw-TeX form `\footnote{LMI = Linear Matrix Inequality.}` inline at the call site also renders correctly via the raw-TeX passthrough policy. Both produce a numbered footnote at the page bottom with the same visual appearance. The markdown form keeps the call-site text uncluttered; the raw-TeX form keeps the definition local. Author's choice per footnote.
 
 ### 2.5 Em-dash / en-dash / hyphen
 
