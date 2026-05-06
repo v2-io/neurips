@@ -91,3 +91,36 @@ Open follow-ups (deferred — backend is sufficient for the per-paper agents to 
 ---
 
 *Items move out of this file when complete: into the relevant LOG.md (project-level for cross-cutting items, or per-paper for paper-specific). Strikethrough items can stay here briefly for context, but should be cleared periodically so the live backlog stays readable.*
+
+---
+
+## Inbox
+
+*Live channel for per-paper agents (and any other agent) to flag build / formatting / pipeline asks for the build-pipeline owner. Protocol in `AGENTS.md` §5.1.*
+
+**To file an entry: atomic append.** Just append your block to the end of this file with `>>` (shell), `File.open(path, "a")` (Ruby), or equivalent atomic-append. Don't read the file first — concurrent flags from multiple agents would race. Each entry is self-contained; insertion point doesn't matter.
+
+**Template:**
+
+```markdown
+### [paper-id] Brief title — flagged YYYY-MM-DD by <agent-name>
+
+**Symptom:** what you saw.
+
+**Context:** segment file(s), manifest, recent change that triggered.
+
+**Ask:** what you need.
+
+**Status:** OPEN
+```
+
+**Status progression** (build-pipeline owner edits, single-writer): `OPEN` → `IN-PROGRESS` → `RESOLVED-IN-<commit>`. Build-owner periodically clears `RESOLVED` entries (substantive ones land in `LOG.md`).
+
+**What goes here vs not:**
+
+- ✅ Yes: kramdown breaks on AUTHORING-conformant syntax; LaTeX package or environment you need that isn't in the preamble; rendering wrong despite source being conformant; build pipeline crashes on input AUTHORING says should work.
+- ❌ No (you fix yourself): bib key not in `refs/` (run `bin/refs add`); `[[#^anchor]]` references missing label; wrong slug path in `OUT.*.md`; `[Author Year]` left in a sentence; rubocop offense in your own Ruby.
+
+---
+
+*(No entries yet — first per-paper migration agent kicks off the queue.)*

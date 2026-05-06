@@ -260,6 +260,26 @@ Four categories that must NOT appear in submitted PDFs:
 
 LaTeX form in markdown source: `$\delta_{\mathrm{sat}}$`, `$\sum_{t=1}^T$`. Unicode in agent chat: `δ_sat`, `Σ`.
 
+### 3.7 Disambiguate quantifier scope before softening
+
+When an audit flags a load-bearing iff / forced / exact / universal / every claim as too-strong, **disambiguate the quantifier scope into named readings before deciding to soften**. The "too-strong" symbol is often compressing several distinct claims with different truth values. The strongest reading is usually the one the paper informally meant; disambiguation recovers it under explicit hypotheses.
+
+A sub-pattern of strengthen-before-softening (`AGENTS.md` §3.1) that fell out of this sprint. Validated repeatedly across B-N4 / B-CS1 / B-N8 audits — every Pass-2 / 3 / 4 audit produced at least one finding where this move converted a recommended softening into a recovered strong reading.
+
+### 3.8 Barrier-vs-multiplier
+
+When a $1/(\text{slack})$-shaped expression appears in survival or constraint contexts, **always ask**: is this a barrier function or a Lagrange multiplier? They scale oppositely at the same level set. A barrier blows up at the constraint level set *by construction*; a multiplier blows up at *infeasibility* (not at the level set, unless the value function diverges there). Conflating them has caused three independent overclaim incidents on this project.
+
+Operational checklist: (1) what program is this a multiplier of — write the explicit Lagrangian; (2) is the value function bounded; (3) where is the divergence — level set or infeasibility; (4) does the chain rule actually compose — both factors must derive from the same program.
+
+### 3.9 Content-side anti-patterns
+
+- ❌ **Chronicle voice in formal text** — theorem and proof bodies don't reference change history. Don't write "Landed 2026-05-05," "the Pass-2 strengthening lifted ...," "this version replaces the prior bound." Diff-voice belongs in working notes (`> [!todo]`) only; formal expression speaks as the current theory.
+- ❌ **Hallucinated citations** — every entry must be verified before submission (Code-of-Conduct grade). `bin/refs verify <key> ...` is the channel.
+- ❌ **LLM citation context that decays fast** — Nature DOIs that change, arXiv versions that move, web URLs without retrieval dates. Pin versions explicitly or don't cite them.
+- ❌ **Trusting agent summaries for downstream decisions** — verify against primary sources (`AGENTS.md` §3.5).
+- ❌ **Manual numbering** in headings (`## 3. Title`) or equations (`\tag{N}`) — both drift silently under reorganization. LaTeX numbers; you anchor with `^slug`.
+
 ---
 
 ## 4. Raw-TeX escape policy
