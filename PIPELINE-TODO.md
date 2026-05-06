@@ -358,3 +358,31 @@ Reproduces on:
 **Ask.** Inspect bin/build's natbib config (`super,sort&compress`); the natbib `super` style may need a `\bibpunct` tweak or the `\cite` redefinition may be eating the optional argument. Standard natbib should pass `[Theorem N]` through to the bibtex-rendered citation as a tail postnote (rendered as ⁽¹⁰,Thm.6.3⁾ or similar in super-style). The current behavior — leaking the optional argument into text-mode output — looks like a `\cite` redefinition bug rather than a natbib option issue.
 
 **Status:** RESOLVED-IN-`1352759`. Migration agent's diagnosis correct — our custom `\citet` redef declared only one arg (`[1]`) and silently dropped the optional postnote. Fixed by declaring optional first arg with default empty: `\renewcommand{\citet}[2][]{\citeauthor{#2}~\citeyear{#2}\citep[#1]{#2}}` — postnote now passes through to the underlying `\citep`. Verified in 03-llm-hallucinate render: "Tsybakov 2009 [39] Lemma 2.4" appears correctly.
+
+### [03-llm-hallucinate-bound + general] Kramdown table heuristic eats paragraphs with bare `|` in inline math — flagged 2026-05-06 by 03-llm-hallucinate migration agent
+
+**Symptom.** A paragraph containing inline-math with bare `|` (conditional probability shape — e.g., `$P_{M_{\tau^+}|e, M_{\tau^-}}$` for `P(M_{τ+} | e, M_{τ-})`) is misparsed by kramdown as a markdown table when the paragraph has multiple `|` occurrences. The build emits a malformed `\begin{tabular}{ll}\toprule ... & ... \\\bottomrule\end{tabular}` wrapping the prose, with `_` characters escaped as `\_` and `^` escaped as `\textasciicircum{}` (math context lost), producing a fatal `Missing }` lualatex error.
+
+Reproduces on `03-llm-hallucinate-bound/src/02-setup.md`'s §2.1 paragraph `For deterministic update mechanisms the distributional definition (2.1) reduces algebraically: $W_2(\delta_{f_X^M(G)}, P_{M_{\tau^+}|e, M})^2 = \mathbb{E}_{G'}\|f_X^M(M_-, e, G) - f_X^M(M_-, e, G')\|^2$, ...` The `|e, M` inside `P_{M_{\tau^+}|e, M}` plus subsequent `\|` for norms produces 4+ `|` characters in the paragraph, triggering kramdown's table-heuristic.
+
+**Workaround applied.** Source-side: switch `|` (conditional) to `\mid` and `\|` (norm) to `\Vert` throughout the paper. Both render identically in LaTeX math mode but don't trigger the kramdown table heuristic. Adopted as a paper-wide convention from §3 onward; §2 was retrofitted. Documented in this paper's `LOG.md`.
+
+**Ask.** The kramdown parser should not interpret `|` characters that appear *inside* inline-math spans (`$...$`) as table delimiters. A small parser fix to mask math-mode content before table detection should resolve this. Worth flagging since this pattern (conditional probability inline math) is universal in Bayesian / probabilistic-method theory papers and will hit any future paper without the `\mid` workaround. Implementation: scan for inline-math spans first, mask their content, then run table detection over the masked text.
+
+**Status:** OPEN
+
+### [03-llm-hallucinate-bound + general] `[!table]` callout doesn't auto-size tabular columns; wide-content tables overflow `\textwidth` — flagged 2026-05-06 by 03-llm-hallucinate migration agent
+
+**Symptom.** The `[!table]` callout emits `\begin{tabular}{l...l}` with simple left-aligned columns, no text-wrapping. Cells with longer content (multi-clause topology descriptions, prose-shaped Examples) overflow the NeurIPS single-column textwidth and render with the rightmost columns cut off / truncated mid-word.
+
+Reproduces on `03-llm-hallucinate-bound/out/full-paper.pdf` page 5 (Table 1 — Goal/Update Coupling Class partition, 4 columns, ~60-character cells). The "Examples" column doesn't render at all; "Topology" column truncates mid-sentence at the page edge.
+
+**Workaround options.** None applied at migration time (per-paper agent's call):
+
+- *(a) Author-side rewrite:* shorten cell content to fit default `l` columns; loses information density.
+- *(b) Author-side raw TeX:* replace `[!table]` callout with a raw `\begin{table}` ... `\begin{tabularx}{\textwidth}{...}` block via raw-TeX passthrough. AUTHORING §1.4 says authors don't write `\begin{tabular}` directly but raw-TeX is allowed via passthrough policy (§4); this would be the pragmatic escape for wide tables.
+- *(c) Pipeline-side fix:* `[!table]` converter detects table width vs `\textwidth` and switches to `tabularx` with `X` columns automatically when needed. Or accepts a `column-spec:` attribute on the callout marker (`> [!table] Title ^anchor column-spec="lXXX"`) to let authors specify column types. Or wraps long tables in `\resizebox{\textwidth}{!}{...}` as a fallback.
+
+**Ask.** Decide and implement one of (b)/(c) — probably (c) at pipeline level since the wide-table case is common for theory papers (architectural classifications, divergence comparisons, hypothesis matrices). Tabularx with default `lXXX` for tables wider than ~4 columns would handle the typical case without author-side configuration.
+
+**Status:** OPEN
