@@ -255,6 +255,8 @@ intrinsic-motivation methods (e.g., ICM, RND, VIME)
 
 UTF-8 in source. Lualatex handles `Łojasiewicz`, `Bretagnolle–Huber`, `Čencov`, `Grönwall`, `Otto–Villani` directly. No `\'e` / `\"o` / `\v{c}` workarounds.
 
+**Math operators in prose need math mode.** TeX Gyre Termes (the build's main text font) covers letters with diacritics and the standard symbol set, but does *not* carry math operator glyphs. Bare Unicode math operators in prose — `≡` (U+2261), `∇` (U+2207), `∑` (U+2211), `∫` (U+222B), `∂` (U+2202), `∞` (U+221E), `≤` (U+2264), `≥` (U+2265), `≠` (U+2260), `≈` (U+2248), `±` (U+00B1) — render as missing-glyph boxes (`☐`) and emit a "Missing character" warning at compile. Wrap them in inline math: `LMI ≡ greedy` → `LMI $\equiv$ greedy`. Standard letters (Greek, accented Latin, Cyrillic) render directly outside math mode; math operators do not.
+
 ### 2.9 Code spans
 
 Backticks. Inline `` `code` `` and fenced ```code blocks``` work as kramdown standard. Inline code escapes the body content (so `` `\textbf` `` renders as literal `\textbf`, not as the LaTeX command).
