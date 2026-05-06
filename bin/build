@@ -189,7 +189,17 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
 
   # Override the inherited escape — passthrough \, {, }, $; resolve cross-refs
   # at the text level before the special-character escape pass.
-  def escape(str) = str.gsub(CREF_PATTERN) { "\\Cref{#{Regexp.last_match(1)}}" }.gsub(ESCAPE_RE, ESCAPE_MAP)
+  # Cross-ref router: anchors prefixed `eq-` render as \eqref{} (parenthesized
+  # number, AUTHORING §1.7 convention); all other anchors use \Cref{} which
+  # cleveref types automatically (Theorem N / Lemma N / Section N / etc.).
+  def escape(str)
+    str
+      .gsub(CREF_PATTERN) do
+        anchor = Regexp.last_match(1)
+        anchor.start_with?("eq-") ? "\\eqref{#{anchor}}" : "\\Cref{#{anchor}}"
+      end
+      .gsub(ESCAPE_RE, ESCAPE_MAP)
+  end
 
   # Full-escape variant for codespan content. See CODESPAN_ESCAPE_MAP comment.
   def codespan_escape(str) = str.gsub(CODESPAN_ESCAPE_RE, CODESPAN_ESCAPE_MAP)
@@ -584,10 +594,36 @@ class Builder
     if src_path.extname == ".tex"
       "#{content}\n"
     else
+      content       = preprocess_anchored_equations(content)
       doc           = Kramdown::Document.new(content, input: "NeurIPS")
       out, warnings = doc.to_neurips
       warnings.each { |w| @lint_findings << "#{row.path}: #{w}" }
       out
+    end
+  end
+
+  # AUTHORING §1.7 — anchored equations are the convention (replacing manual
+  # \tag{N}). Detect `$$ ... $$ ^eq-name` and rewrite at source-prep time as
+  # `\begin{equation} ... \label{eq-name} \end{equation}` (which IS numbered,
+  # unlike kramdown's default \[...\] for $$...$$ which is unnumbered).
+  # Multi-line `\begin{aligned}...\end{aligned}` inside `$$...$$` becomes
+  # `\begin{align}...\end{align}` (also numbered, with a label on the first row).
+  def preprocess_anchored_equations(text)
+    text.gsub(/\$\$(.*?)\$\$[ \t]*\^([\w-]+)/m) do
+      inner     = Regexp.last_match(1).strip
+      anchor    = Regexp.last_match(2)
+      rewritten =
+        if inner.include?("\\begin{aligned}")
+          inner
+            .sub("\\begin{aligned}", "\\begin{align}\n\\label{#{anchor}}")
+            .sub("\\end{aligned}", "\\end{align}")
+        else
+          "\\begin{equation}\n#{inner}\n\\label{#{anchor}}\n\\end{equation}"
+        end
+      # Wrap in nomarkdown so kramdown passes through verbatim — math content
+      # contains `^*`, `\|`, `*` etc. that kramdown would otherwise interpret
+      # as markdown formatting once $$...$$ math-mode protection is gone.
+      "\n{::nomarkdown}\n#{rewritten}\n{:/nomarkdown}\n"
     end
   end
 

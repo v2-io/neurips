@@ -157,7 +157,7 @@ The OUT.*.md manifest's `Type` column drives the `\appendix` directive — the b
 
 ### 2.2 Cross-references
 
-`[[#^anchor]]` (Obsidian native). Renders as `\Cref{anchor}`. cleveref auto-types the noun (Theorem, Lemma, Section, Equation, Table, Figure) so the author never has to remember the type:
+`[[#^anchor]]` (Obsidian native). Renders as `\Cref{anchor}` for typed references (cleveref auto-types the noun: "Theorem N", "Lemma N", "Section N", "Table N", "Figure N"). Anchors prefixed `eq-` route to `\eqref{anchor}` instead, producing the conventional parenthesized form `(N)` that math-paper readers expect for equation references. Reserve the `eq-` prefix for equation anchors only.
 
 ```
 We've now referenced [[#^thm-main]], [[#^lem-lyapunov]], [[#^tab-rates]], and [[#^sec-theory]].
