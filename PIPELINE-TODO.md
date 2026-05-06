@@ -46,7 +46,7 @@ The build pipeline's lint pass should warn on (or convert / strip) authoring pat
 
 - [x] **C5.** Cleveref names added for conjecture / claim / hypothesis / appendix (had `\newtheorem` defs but no `\crefname`) — done `821ab8a`. All callout types and structural envs now have explicit crefname entries.
 
-- [ ] **C6. `\paragraph{}` / acknowledgment behavior** — when AUTHORING §1.9 detection lands, verify the rendered paragraph headings interact correctly with `\Cref` (paragraphs aren't typically cleveref-cross-referenced, but should fail gracefully).
+- [x] **C6. `\paragraph{}` + `\Cref` interaction — fail-gracefully landed.** Bold-prefix paragraphs (`**Title.** body...`) auto-convert to `\paragraph{Title}` via §B2. `\paragraph{}` has no cleveref counter, so authors who write `**Title.** ^anchor` would get the `^anchor` rendered as literal text (`\textasciicircum{}anchor`) AND no resolvable `\Cref{anchor}`. Fix: `convert_p` strips the trailing `^anchor` from the rendered output and emits a lint warning pointing the author to the callout / heading-anchor alternatives. The unresolved `\Cref{anchor}` still emerges as a `[?\,anchor]` placeholder via `resolve_unresolved_refs`. AUTHORING §1.9 documents the limitation.
 
 ## E. Pipeline tooling not yet ported
 

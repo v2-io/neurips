@@ -259,11 +259,24 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
   # structural hierarchy if rewritten as \paragraph{}.
   PARAGRAPH_HEADING_RE = /\A\\textbf\{([^}]+?)\.\}\s*/
 
+  # Trailing `^anchor` after a bold-prefix paragraph heading — kramdown's escape
+  # pass turns the `^` into `\textasciicircum{}` and the rest as text. The
+  # anchor doesn't actually work as a cleveref label (\paragraph{} has no
+  # counter), so leaving it in body text shows up as literal `^anchor` noise
+  # in the PDF. Strip it here and emit a lint warning per AUTHORING §1.9 —
+  # author should use a callout or heading anchor instead.
+  PARAGRAPH_ANCHOR_NOISE_RE = /\A(\\paragraph\{[^}]*\}\s*)\\textasciicircum\{\}([\w-]+)\s*/
+
   def convert_p(el, opts)
     rendered = super
     return rendered unless opts[:parent]&.type == :root
 
-    rendered.sub(PARAGRAPH_HEADING_RE) { "\\paragraph{#{Regexp.last_match(1)}} " }
+    rendered = rendered.sub(PARAGRAPH_HEADING_RE) { "\\paragraph{#{Regexp.last_match(1)}} " }
+    rendered.sub(PARAGRAPH_ANCHOR_NOISE_RE) do
+      anchor = Regexp.last_match(2)
+      warning("`^#{anchor}` after bold-prefix paragraph heading — \\paragraph{} cannot be cross-referenced; use a callout (`> [!type] ... ^#{anchor}`) or a heading anchor (`### Title ^#{anchor}`) instead. AUTHORING §1.9.")
+      Regexp.last_match(1)
+    end
   end
 
   # Lint rule §B1: manual heading numbering ("## 3. Title", "### 3.1 Subtitle")

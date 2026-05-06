@@ -161,6 +161,8 @@ Paragraph-leading bold + period at the start of a paragraph is detected and rend
 
 This matches the NeurIPS academic convention without changing how authors write. The detection is "bold span at paragraph start, terminated by period, followed by a space and continuation."
 
+**Bold-prefix paragraphs cannot be cross-referenced.** Don't write `**Strategic tempo.** ^par-tempo` expecting `\Cref{par-tempo}` to render "Paragraph N" — `\paragraph{}` doesn't increment a counter cleveref recognizes, and the trailing `^par-tempo` would render as literal text in the body rather than as a label. Bold-prefix is the deliberately-unnumbered form. If the block needs to be cross-referenced, use a theorem-shaped callout (`> [!hypothesis] (S) — ... ^hyp-S`) or a heading anchor (`### Strategic tempo ^sec-tempo`) instead — both attach `\label{}` correctly and resolve under cleveref.
+
 ### 1.10 Appendices
 
 The OUT.*.md manifest's `Type` column drives the `\appendix` directive — the build injects `\appendix` before the first row whose Type is `Appendix`. Section headings in appendix segments use the same un-numbered authoring (`## Setup`); LaTeX renders them as A.1, A.2, B, B.1, etc. **No manual `## A.1 Setup` prefix.**
