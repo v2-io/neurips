@@ -369,7 +369,7 @@ Reproduces on `03-llm-hallucinate-bound/src/02-setup.md`'s §2.1 paragraph `For 
 
 **Ask.** The kramdown parser should not interpret `|` characters that appear *inside* inline-math spans (`$...$`) as table delimiters. A small parser fix to mask math-mode content before table detection should resolve this. Worth flagging since this pattern (conditional probability inline math) is universal in Bayesian / probabilistic-method theory papers and will hit any future paper without the `\mid` workaround. Implementation: scan for inline-math spans first, mask their content, then run table detection over the masked text.
 
-**Status:** OPEN
+**Status:** ALREADY-RESOLVED-IN-`7d0c491` (pre-existing fix; migration agent applied source-side `\mid` / `\Vert` workaround before noticing the pipeline-side mask). Verified on the exact reproducer (`$W_2(\delta_{f_X^M(G)}, P_{M_{\tau^+}|e, M})^2 = \mathbb{E}_{G'}\|...\|^2$`): `mask_math_pipes` (bin/build:702) replaces `|` and `\|` inside inline-math with the `\x01` sentinel before kramdown parses, and kramdown parses the paragraph as a single `:p` element rather than triggering its table heuristic. The source-side `\mid`/`\Vert` convention adopted in 03-llm-hallucinate is independently a fine choice (clearer math markup), but is not required by the pipeline.
 
 ### [03-llm-hallucinate-bound + general] `[!table]` callout doesn't auto-size tabular columns; wide-content tables overflow `\textwidth` — flagged 2026-05-06 by 03-llm-hallucinate migration agent
 
@@ -385,4 +385,13 @@ Reproduces on `03-llm-hallucinate-bound/out/full-paper.pdf` page 5 (Table 1 — 
 
 **Ask.** Decide and implement one of (b)/(c) — probably (c) at pipeline level since the wide-table case is common for theory papers (architectural classifications, divergence comparisons, hypothesis matrices). Tabularx with default `lXXX` for tables wider than ~4 columns would handle the typical case without author-side configuration.
 
-**Status:** OPEN
+**Status:** RESOLVED via opt-in marker attribute (commit pending). Implementation chose a hybrid of (c) — pipeline supports tabularx, author opts in per-table via `cols="..."` on the marker. Default behavior preserved: narrow tables continue rendering as natural-width `tabular` (no tabularx tax). Wide tables opt in by writing the column spec on the marker:
+
+```
+> [!table] Class partition over goal/update topology. ^tab-class-partition cols="l X X X"
+>
+> | Class | Topology | Update geometry | Examples |
+> ...
+```
+
+The cols attribute is a plain LaTeX column spec string — `l`/`c`/`r` for fixed-content alignment, `X` for an equal-share text-wrapping column distributed across the remaining `\textwidth`. Pipeline emits `\begin{tabularx}{\textwidth}{<cols>}` instead of `\begin{tabular}{...}` when `cols=` is present. AUTHORING.md §1.4 documents the convention. The reason for opt-in (rather than auto-detect-and-switch): natural-width tabular sizing reads better for narrow tables (column widths track content), and the migration agent can't always tell at conversion time whether the table will overflow textwidth. Per-table author judgment is cheap and explicit. Auto-detect could be layered on top later if it proves needed.

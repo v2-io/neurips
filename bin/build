@@ -101,7 +101,18 @@ class Kramdown::Parser::NeurIPS < Kramdown::Parser::Kramdown
     type     = marker[:type].downcase
     title    = nil
     anchor   = nil
-    if (rest = marker[:rest]) && !rest.empty? && (rm = rest.match(MARKER_REST))
+    cols     = nil
+    rest     = marker[:rest].to_s
+    # Trailing key="value" attributes get peeled off before the title/anchor
+    # match. Currently only cols="..." (a tabularx column spec) is recognized
+    # — used by [!table] callouts whose default tabular overflows \textwidth.
+    # Keeping the extraction generic makes it cheap to add width=, rotate=,
+    # etc. later without re-touching the title-anchor regex.
+    if (cm = rest.match(/\s+cols="(?<cols>[^"]+)"\s*\z/))
+      cols = cm[:cols]
+      rest = rest[0...cm.begin(0)]
+    end
+    if !rest.empty? && (rm = rest.match(MARKER_REST))
       title  = rm[:title].to_s.strip
       title  = nil if title.empty?
       anchor = rm[:anchor]
@@ -112,6 +123,7 @@ class Kramdown::Parser::NeurIPS < Kramdown::Parser::Kramdown
     el.attr["data-callout-type"]   = type
     el.attr["data-callout-title"]  = title  if title
     el.attr["data-callout-anchor"] = anchor if anchor
+    el.attr["data-callout-cols"]   = cols   if cols
     @tree.children << el
     parse_blocks(el, body)
     true
@@ -306,7 +318,8 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
 
     marker = {
       title:  escape_title(el.attr["data-callout-title"]),
-      anchor: el.attr["data-callout-anchor"]
+      anchor: el.attr["data-callout-anchor"],
+      cols:   el.attr["data-callout-cols"]
     }
     body = inner(el, opts).strip
 
@@ -399,7 +412,20 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
     out
   end
 
+  # When the [!table] marker carries a `cols="..."` attribute (LaTeX column
+  # spec — `l`, `c`, `r`, `X`, `p{...}`), substitute the kramdown-emitted
+  # tabular block with tabularx of \textwidth. The `X` column type wraps
+  # long cell content within a width-distributed column; this rescues wide
+  # tables (multi-clause prose cells, classification matrices) whose default
+  # `l...l` tabular overflowed the NeurIPS textwidth and truncated columns.
+  # See AUTHORING §1.4. Default (no cols=) preserves the natural-width
+  # tabular behavior — narrow tables shouldn't pay the tabularx tax.
   def render_table_callout(marker, body)
+    if marker[:cols]
+      body = body
+             .sub(/\\begin\{tabular\}\{[^}]*\}/, "\\begin{tabularx}{\\textwidth}{#{marker[:cols]}}")
+             .sub(/\\end\{tabular\}/, "\\end{tabularx}")
+    end
     out  = +"\\begin{table}[h]\n"
     out << "  \\centering\n"
     out << "  \\caption{#{marker[:title]}}\n" if marker[:title]
@@ -531,6 +557,9 @@ class Builder
     \\usepackage{amssymb}
     \\usepackage{amsthm}
     \\usepackage{cleveref}
+    % tabularx — width-distributed `X` columns for wide [!table] callouts
+    % opting in via `cols="lXX..."` attribute. AUTHORING §1.4.
+    \\usepackage{tabularx}
 
     % Hyperref boxes off — visually quieter prose; reviewers see plain text
     % rather than colored frames around every \\Cref / \\cite / footnote.

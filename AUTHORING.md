@@ -58,7 +58,19 @@ Renders as `\begin{ack}...\end{ack}` (NeurIPS sty-defined; auto-suppressed in an
 
 Title becomes `\caption{...}`, anchor becomes `\label{...}`, body becomes `\begin{tabular}` with booktabs (`\toprule` / `\midrule` / `\bottomrule`). Column alignment from the markdown separator row. Captions can contain inline math; they pass through.
 
-The author **never** writes `\begin{table}` or `\begin{tabular}` directly.
+**Wide tables** (multi-clause prose cells, classification matrices) often overflow the NeurIPS single-column textwidth under the default `tabular`'s natural-width sizing — rightmost columns truncate or fall off the page. Opt into a width-distributed layout via a `cols="..."` attribute on the marker:
+
+```
+> [!table] Class partition over goal/update topology. ^tab-class-partition cols="l X X X"
+>
+> | Class | Topology | Update geometry | Examples |
+> |:------|:---------|:----------------|:---------|
+> | 1     | ...      | ...             | ...      |
+```
+
+Each character/group is a LaTeX column spec: `l`/`c`/`r` for fixed-content alignment, `X` for an equal-share text-wrapping column distributed across the remaining width (tabularx). Use `l` for narrow first columns (labels, single tokens), `X` for wide prose-shaped columns. The default (no `cols=`) preserves natural-width tabular — narrow tables shouldn't pay the tabularx tax.
+
+The author **never** writes `\begin{table}`, `\begin{tabular}`, or `\begin{tabularx}` directly.
 
 ### 1.5 Figures
 
