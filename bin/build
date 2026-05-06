@@ -198,6 +198,23 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
 
   def convert_codespan(el, _opts) = "\\texttt{#{codespan_escape(el.value)}}"
 
+  # Paragraph-leading bold-then-period — the academic-prose `**Two regimes.**
+  # body...` shape — auto-converts to `\paragraph{Two regimes} body...` per
+  # AUTHORING.md §1.9. Detection: rendered paragraph that starts with
+  # \textbf{...}. with period inside the brace, followed by whitespace.
+  #
+  # Limited to top-level paragraphs (parent is :root). Paragraphs inside list
+  # items, blockquotes, table cells, callouts, etc. would break LaTeX's
+  # structural hierarchy if rewritten as \paragraph{}.
+  PARAGRAPH_HEADING_RE = /\A\\textbf\{([^}]+?)\.\}\s*/
+
+  def convert_p(el, opts)
+    rendered = super
+    return rendered unless opts[:parent]&.type == :root
+
+    rendered.sub(PARAGRAPH_HEADING_RE) { "\\paragraph{#{Regexp.last_match(1)}} " }
+  end
+
   def convert_header(el, opts)
     raw_title = inner(el, opts)
     starred   = false
