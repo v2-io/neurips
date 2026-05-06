@@ -274,7 +274,166 @@ Last-resort escape: `{::nomarkdown} ... {:/nomarkdown}` blocks pass through verb
 
 ---
 
-## 5. Open items
+## 5. NeurIPS submission essentials
+
+*Distilled from `~/src/neurips2026/common/neurips-main-track-handbook.md` (~76 KB; the authoritative source). What's here is the migration-agent-relevant slice — when in doubt, the original handbook governs.*
+
+### 5.1 Page limit + structure
+
+- **9 pages** of main content. Figures and tables count toward the limit; references, acknowledgments, optional technical appendices, and the paper checklist do **not** count. Exceeding the page limit = desk rejection.
+- **Single PDF**, in this order: paper body → references → optional appendices → NeurIPS paper checklist (last). Checklist must be present (its absence is desk rejection).
+- **+1 page** allowed for camera-ready (10 pages of content). Title / abstract editable but cannot "substantially differ" from submission.
+
+### 5.2 Style file + tracks
+
+- Must use `neurips_2026.sty` (the canonical sty in `common/`; do **not** modify — modifications are grounds for desk rejection).
+- Track options at submission: `\usepackage{neurips_2026}` (default = main, anonymized). At camera-ready, add `final`. Other tracks: `position`, `eandd` (Evaluations & Datasets), `creativeai`, workshops `sglblindworkshop` / `dblblindworkshop`. Preprint version (e.g., for arXiv): `\usepackage[preprint]{neurips_2026}`.
+- Authors don't touch the sty; the build pipeline at `bin/build` injects per-paper preamble additions (theorem environments, cleveref, fontspec, hyperref settings, custom `\citet`) without modifying the canonical sty.
+
+### 5.3 Anonymization (double-blind)
+
+- No author identifiers in the submitted PDF. The default `\usepackage{neurips_2026}` suppresses author block automatically.
+- **No `\begin{ack}` content** at submission (use the `ack` environment in source so it's auto-suppressed; restore at camera-ready).
+- **Third-person self-citation.** "In the previous work of Jones et al. [4]," not "In our previous work [4]." Cite your own prior work like any other.
+- **Self-citation prohibition** for the ASF working paper (Zenodo DOI `10.5281/zenodo.19986312`). Citing it = double-blind violation. `bin/refs lint` enforces.
+- **Anonymization vocabulary** (§3.5 above): Personal / Framework / ELI / Reviewer-priming categories all scanned by `bin/refs lint` against `refs/deny-list.yml`.
+
+### 5.4 AI-use disclosure
+
+NeurIPS 2026 handbook §"Author Use of Agents and LLMs": *"Use of spell checkers and grammar suggestions, aid for editing purposes, and basic code assistance does not need to be documented."* Methodological disclosure is required only when AI is *"an important, original, or non-standard component of the approach."*
+
+Our use is collaborative drafting + editing aid → **no methodological disclosure section** in the main text. Acknowledgments can mention AI assistance generally (camera-ready only; suppressed at submission).
+
+**Hallucinated citations are a Code-of-Conduct violation** — desk-rejection grade. Every entry in `refs/entries/<bibkey>.yml` must be verified before submission (`bin/refs verify <key> bib-fields|doi-resolves|claim-supported|page-ref --by ... --outcome verified`).
+
+### 5.5 Contemporaneous-work cutoff
+
+March 1, 2026. Papers appearing online before this date are **prior work** — must be cited and distinguished. Papers after are **contemporaneous** — should be cited, but the submission isn't required to empirically beat them.
+
+### 5.6 Reviewer-recommendation, conflicts of interest
+
+OpenReview lets authors suggest reviewers + flag conflicts. All affiliations from the last three years must appear in OpenReview's "Education & Career History."
+
+### 5.7 PDF + supplementary size
+
+PDF ≤ 50 MB. Supplementary ZIP (figures, code, raw data, extended appendices) ≤ 100 MB. Per-paper supplementary builder is `bin/build-supplementary` (deferred port from old workspace; see `PIPELINE-TODO.md` §E4).
+
+### 5.8 Camera-ready (post-acceptance)
+
+Required at camera-ready, **not** at submission:
+- **Funding Transparency Statement** — disclose third-party funding/support during the last 36 months for the work, plus competing-interest financial relationships outside the work in the same window.
+- **Acknowledgments** restored.
+- **Lay summary** — paragraph-length, jargon-free, aimed at general public.
+- **+1 page** to 10 total content pages.
+
+---
+
+## 6. Title / TL;DR / abstract patterns
+
+*Distilled from `~/src/neurips2026/common/metadata-conventions.md`, which synthesized title / TL;DR / abstract patterns from accepted NeurIPS theory papers. Tier markers in that doc: [POLICY] (verifiable against NeurIPS docs), [PATTERN] (observed across recent acceptances), [INFERENCE] (analytical inference). Read the full doc for examples and rationale.*
+
+### 6.1 Title
+
+- **Dominant style:** "Concept Phrase: Descriptive Subtitle." Punchy main clause naming the contribution + clarifying mechanism/result clause.
+  *Examples (NeurIPS 2024–2025 best-paper recipients): "Visual Autoregressive Modeling: Scalable Image Generation via Next-Scale Prediction"; "Stochastic Taylor Derivative Estimator: Efficient Amortization for Arbitrary Differential Operators".*
+- **Colon-free form** for one crisp claim: "Not All Tokens Are What You Need for Pretraining"; "Optimal Mistake Bounds for Transductive Online Learning."
+- **Length:** 6–14 words. Pure-theory papers tend toward shorter, more descriptive forms.
+- **Avoid acronyms** in the title unless naming a system that will be reused.
+
+### 6.2 OpenReview TL;DR
+
+- **250-character cap.** Optional but worth filling.
+- One declarative sentence: name the object, name what's shown about it. No setup, no motivation, no caveats.
+- Under-using the budget is fine.
+
+### 6.3 Abstract
+
+- **One paragraph** (NeurIPS template constraint). 10-point type, 11-point leading, 1/2-inch indent both sides.
+- **Roadmap shape:** what we do → how we do it → what we find. ~150–250 words for theory papers.
+- Avoid forward references to section numbers (paper hasn't started yet); name the result instead.
+- Don't claim "100%" / "comprehensive" / "fully complete" — match language to actual state (PRAXES.md voice discipline).
+
+---
+
+## 7. Per-paper directory layout
+
+### 7.1 Directory shape
+
+Each submodule (`01-tragedy-confident-agent/`, `02-unified-convergence-rl/`, `03-llm-hallucinate-bound/`) has the same shape:
+
+```
+0N-{slug}/
+├── meta.md              # YAML frontmatter (title / authors / abstract); pipeline reads as preamble metadata
+├── refs.bib             # GENERATED by `bin/refs emit 0N-{slug}` — do not hand-edit
+├── TODO.md              # live work; agents free to branch to TODO-citations.md, TODO-trim.md, etc.
+├── LOG.md               # append-only history (reverse-chronological, never edit prior entries)
+├── OUT.full-paper.md    # assembly manifest, full version (no page constraint)
+├── OUT.neurips-2026-paper.md  # assembly manifest, 9-page-budget version
+├── src/                 # segment files (.md or .tex), each one a piece the manifests reference
+├── audits/              # external/internal audit reports land here; findings get triaged into TODO.md
+├── spikes/              # temporary investigations; spike report.md → archive when integrated
+├── simulations/         # simulation code (B-N4 only — has empirical anchor)
+├── results/             # raw empirical results (B-N4 only)
+├── out/                 # build artifacts: out/<manifest-stem>.{tex,pdf,aux,log,bbl}; gitignored
+└── _archive/            # frozen artifacts (integrated audits, completed spike directories)
+```
+
+The umbrella owns: `bin/build` (pipeline), `bin/refs` (bibliography), `common/` (LaTeX template + sty), `refs/` (bib database). Per-paper repos own only their own content; pipeline behavior is shared.
+
+### 7.2 Assembly manifests (`OUT.*.md`)
+
+The manifest is a markdown file. Each row in its tables references a `src/` segment; top-to-bottom is the assembly order (see §1 for column convention `§ | Type | Slug | Title | Stage`). `bin/build <paper> <manifest-stem>` builds the manifest at `OUT.<stem>.md`.
+
+**Multiple manifests, same segments.** A paper has more than one manifest. The base case is `OUT.full-paper.md` (everything, unconstrained) + `OUT.neurips-2026-paper.md` (subset trimmed to the 9-page main-content budget, possibly reordered). Other forms can follow — `OUT.workshop-talk.md`, `OUT.journal-version.md`, `OUT.short-form.md` — all pointing at the same `src/` segments, just different selections / orderings.
+
+**Reuse over re-edit.** When trimming, prefer to write a new manifest that selects a subset of existing segments rather than edit segments to fit a smaller form. Less drift between versions; math changes propagate to all manifests automatically; fewer segments to apply downstream conventions to. *This is especially valuable while the math is still in flux* — a segment that proves Theorem 3.1 lives in one place; if the proof tightens, every manifest gets the update for free. If a segment doesn't fit a particular manifest, **omit it** (don't fork-and-edit). Trimming becomes a curation problem, not a content-rewriting problem.
+
+**Manifest narrative.** A manifest file can carry markdown / LaTeX prose between tables — context, structural rationale, drafting notes, "this section bridges to §4 via..." commentary, anything. The build only assembles rows that look like table rows (lines starting with `|` with the standard column shape); everything else is ignored at build time but renders normally if the manifest is read as a doc. ASF-style; see `~/src/agentic-systems/01-aad-core/OUTLINE.md` for the canonical example with extensive between-table prose.
+
+**Multiple tables per manifest.** A manifest commonly has one table per paper section ("## 1. Introduction" with its segments table, then "## 2. Theory" with its segments table, etc.) with prose between. The parser handles multi-table fine; just leave a blank line between table and prose, between prose and next table.
+
+**Commenting out a row** — wrap the row in `<!-- | ... | -->` on its own line:
+
+```
+| 3 | Section | [results](src/03-results.md) | Results | draft |
+<!-- | 4 | Section | [discussion](src/04-discussion.md) | Discussion | tentative -->
+| A | Appendix | [proofs](src/A-proofs.md) | Proofs | draft |
+```
+
+The parser sees the leading `<` and skips; the row stays in the file as a placeholder for later restoration. Kramdown also won't render the comment in the displayed manifest. Use this when experimenting with trim variants before committing to a decision.
+
+**Trim freedom.** Authors are encouraged to try completely different outlines / orderings as part of trim work — different `OUT.*.md` manifests with different selections express different stories without touching the segments themselves. See what reads best and pick.
+
+---
+
+## 8. Migration recipe
+
+Concrete workflow when migrating a paper from the old workspace at `~/src/neurips2026/<paper>/` into a target submodule at `~/src/neurips/0N-{slug}/`. Stepwise on paper #1 with Joseph guiding; mechanical on #2 / #3.
+
+1. **Read the source.** `paper-draft.md` is the main content. `OUTLINE.md` carries the section budget + audit findings. `LOG.md` carries history. `prior-art/` carries Undermind + positioning. `sim/` (B-N4 only) carries simulation code. `_archive/` carries frozen audit relics.
+2. **Decide segmentation boundaries.** Default: one segment per top-level section (`## 1. Introduction` → `src/01-introduction.md`). Finer where natural (long appendix subsections may want their own segment). Slugs are stable — once a segment exists at `src/intro.md`, don't rename.
+3. **Write segments** using AUTHORING conventions:
+   - Theorem-shaped blocks → Obsidian callouts (§1.1).
+   - Cross-refs → `[[#^anchor]]` (§2.2).
+   - Equations with anchors, not `\tag{N}` (§1.7).
+   - Headings without manual numbering (§1.8).
+   - `\cite{key}` source form (§2.3).
+   - $..$ inline math (§2.1).
+4. **Write the manifests.** `OUT.full-paper.md` lists segments in assembly order; `OUT.neurips-2026-paper.md` is the 9-page subset (typically: trim some appendix segments, possibly compress some main-content segments; same `src/` files referenced in different orders/subsets).
+5. **Citation migration.** `bin/migrate-cites <paper>` (when implemented per `PIPELINE-TODO.md` §C1.4) sweeps `[Author Year]` → `\cite{key}` against the `refs/entries/` index. Ambiguous matches (e.g., `[Hintikka 1991]` → multiple bib entries) flag for human disambiguation. Until that lands, hand-convert as you go OR leave `[Author Year]` markers for later sweep.
+6. **Equation-tag migration.** Replace manual `\tag{N}` in display math with anchored `^eq-name` form. ~140–200 equations per paper. Cross-references in prose ("see (9a)") → `[[#^eq-9a]]`. Some prose references (e.g., "(7) above") will need re-anchoring; flag those for human resolution.
+7. **Heading-prefix sweep.** Strip `## 3. ` / `### 3.1 ` manual prefixes from segment headings; LaTeX numbers automatically.
+8. **Anonymization sweep.** `bin/refs lint <paper>` checks the bib side. For segment text, scan against the four-category vocab (`refs/deny-list.yml`); fix any hits. Self-citation policy enforced for ASF Zenodo DOI.
+9. **Auxiliary content.** Port `prior-art/` → into the new submodule's `audits/` or a new `prior-art/` subdir (decide by kind). Port `sim/` (B-N4) → `simulations/`. Port `_archive/` audit relics → `_archive/` (verify integration before archiving — see PRAXES §3.6).
+10. **Build verify.** `bin/build 0N-{slug}` produces `out/<manifest>.pdf`. Open the PDF visually; confirm rendering, citation form, anonymization. Fix any build failures per `PIPELINE-TODO.md` items.
+11. **Per-paper trackers.** Initialize `TODO.md` (capture remaining work) and `LOG.md` (capture the migration milestone) at the submodule root.
+12. **Commit per milestone.** Don't lump segmentation + manifests + cite migration + heading sweep into one commit; separate concerns make the diff reviewable. Use `git commit -- <pathspec>` form to bound scope.
+
+If something blocks (bib-key mismatch, ambiguous cite, math segment that won't compile, anonymization edge case), drop a flag in the umbrella's `MIGRATE-TODO.md` or the per-paper `TODO.md` and continue with non-blocked work; come back when the blocker resolves.
+
+---
+
+## 9. Open items
 
 These are flagged in line above and consolidated here:
 
