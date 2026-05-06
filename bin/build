@@ -591,6 +591,7 @@ class Builder
     raise "segment not found: #{src_path}" unless src_path.exist?
 
     content = src_path.read
+    lint_anonymization(content, row.path)
     if src_path.extname == ".tex"
       "#{content}\n"
     else
@@ -600,6 +601,43 @@ class Builder
       warnings.each { |w| @lint_findings << "#{row.path}: #{w}" }
       out
     end
+  end
+
+  # PIPELINE-TODO §B4 / §B5 — scan segment source against refs/deny-list.yml
+  # for anonymization vocabulary (Personal / Framework proper-nouns / ELI
+  # names) plus self-cite DOIs (ASF Zenodo). Surfaces as build-time warnings;
+  # `bin/refs lint` covers the bib-side independently. Per AUTHORING §3.5
+  # critical exception, working notes inside spikes/ and _archive/ can use
+  # internal terminology — the lint runs on segment source consumed by the
+  # build, which only includes what the manifest actually assembles.
+  def lint_anonymization(text, source_path)
+    @deny_list ||= load_deny_list
+    return unless @deny_list
+
+    @deny_list["dois"]&.each do |doi|
+      next unless text.include?(doi)
+
+      @lint_findings << "#{source_path}: deny-listed DOI present: #{doi} (AUTHORING §3.5 — ASF self-cite is double-blind violation)"
+    end
+
+    @deny_list["authors"]&.each do |surname|
+      next unless text.match?(/\b#{Regexp.escape(surname)}\b/)
+
+      @lint_findings << "#{source_path}: self-cite-flag surname '#{surname}' present (verify third-person framing)"
+    end
+
+    @deny_list["proper_nouns"]&.each do |name|
+      next unless text.match?(/\b#{Regexp.escape(name)}\b/)
+
+      @lint_findings << "#{source_path}: anonymization vocab '#{name}' present (AUTHORING §3.5 — must not appear in submitted PDF)"
+    end
+  end
+
+  def load_deny_list
+    path = ROOT / "refs" / "deny-list.yml"
+    return nil unless path.exist?
+
+    YAML.safe_load_file(path)
   end
 
   # AUTHORING §1.7 — anchored equations are the convention (replacing manual
