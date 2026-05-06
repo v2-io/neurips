@@ -430,6 +430,10 @@ class Builder
     \\usepackage{amsthm}
     \\usepackage{cleveref}
 
+    % Hyperref boxes off — visually quieter prose; reviewers see plain text
+    % rather than colored frames around every \\Cref / \\cite / footnote.
+    \\hypersetup{hidelinks}
+
     \\newtheorem{theorem}{Theorem}[section]
     \\newtheorem{lemma}[theorem]{Lemma}
     \\newtheorem{corollary}[theorem]{Corollary}
