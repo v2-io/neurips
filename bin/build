@@ -208,6 +208,26 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
 
   def convert_codespan(el, _opts) = "\\texttt{#{codespan_escape(el.value)}}"
 
+  # Kramdown's link parser eats `[[#^anchor]](text)` as `[label](url)` because
+  # `]]` immediately followed by `(` matches the standard link syntax. By the
+  # time `escape` sees text, the wikilink has already been parsed into an :a
+  # element with href="text" and inner content "[#^anchor]". Catch it here
+  # and re-emit as the cross-reference + parenthesized text the author meant.
+  CONVERT_A_WIKILINK_RE = /\A\[#\^([\w-]+)\]\z/
+
+  def convert_a(el, opts)
+    # Inspect the unescaped text of the link's first child (not `inner(el, opts)`
+    # which has already been through escape() with `#` and `^` rewritten).
+    raw   = el.children.first&.type == :text ? el.children.first.value : ""
+    if (m = raw.match(CONVERT_A_WIKILINK_RE))
+      anchor = m[1]
+      cref   = anchor.start_with?("eq-") ? "\\eqref{#{anchor}}" : "\\Cref{#{anchor}}"
+      "#{cref}(#{el.attr['href']})"
+    else
+      super
+    end
+  end
+
   # Kramdown auto-wraps standalone-image paragraphs in `\begin{figure}\begin
   # {center}...\caption{alt}\end{center}\end{figure}`. Our `[!figure]` callout
   # is the canonical figure wrapper (carries the caption / label / centering),
@@ -611,6 +631,16 @@ class Builder
     body
   end
 
+  # Sentinel character used to mask `|` inside math spans before kramdown
+  # parses, so kramdown's table parser doesn't see them as cell separators.
+  # Restored after rendering. \x01 (start-of-heading) is a control character
+  # never present in normal user content.
+  # rubocop:disable Lint/UselessConstantScoping -- constants don't actually
+  # become private without `private_constant`; this constant is mid-class for
+  # locality with the methods that use it, not a privacy declaration.
+  MATH_PIPE_SENTINEL = "\x01".freeze
+  # rubocop:enable Lint/UselessConstantScoping
+
   def render_segment(row)
     src_path = @paper_dir / row.path
     raise "segment not found: #{src_path}" unless src_path.exist?
@@ -620,11 +650,28 @@ class Builder
     if src_path.extname == ".tex"
       "#{content}\n"
     else
-      doc = Kramdown::Document.new(content, input: "NeurIPS")
+      content = mask_math_pipes(content)
+      doc     = Kramdown::Document.new(content, input: "NeurIPS")
       attach_equation_anchors!(doc.root)
       out, warnings = doc.to_neurips
       warnings.each { |w| @lint_findings << "#{row.path}: #{w}" }
-      out
+      out.tr(MATH_PIPE_SENTINEL, "|")
+    end
+  end
+
+  # Mask `|` inside inline `$...$` and block `$$...$$` math spans so kramdown's
+  # table parser (which is line-based and triggers on enough pipe characters
+  # in a paragraph) doesn't see them. Otherwise prose like `$|x|/|y|$` gets
+  # carved into a `\begin{tabular}` block, escaping `_` / `^` as text.
+  # Resolves the pipe-in-math flags from 01-tragedy and paper-#2 migration.
+  def mask_math_pipes(text)
+    # Block math first ($$...$$) so the inline pass doesn't mis-eat them.
+    text = text.gsub(/\$\$(.*?)\$\$/m) do
+      "$$#{Regexp.last_match(1).tr('|', MATH_PIPE_SENTINEL)}$$"
+    end
+    # Inline math ($...$, single-dollar, lookarounds skip $$ pairs).
+    text.gsub(/(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/) do
+      "$#{Regexp.last_match(1).tr('|', MATH_PIPE_SENTINEL)}$"
     end
   end
 
