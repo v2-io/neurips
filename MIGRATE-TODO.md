@@ -34,7 +34,7 @@ The substantive work. Segment each `paper-draft.md` from the old workspace into 
 Each submodule needs the standard subdirs (per the original restructure-plan §3).
 
 - [ ] **B1. Per-paper subdirs.** `audits/` (audit landing), `out/` (build artifact landing, gitignored), `spikes/` (temporary investigations), `simulations/` (sim code — B-N4 only paper with this), `results/` (raw empirical results — B-N4 only). Add to each submodule's `.gitignore`.
-- [ ] **B2. Per-paper trackers.** `OUTLINE.md` (paper plan + section budget + audit findings), `LOG.md` (append-only history). Port from old workspace where useful; freshen for the new structure.
+- [ ] **B2. Per-paper trackers.** `TODO.md` (live work — agents free to branch into `TODO-citations.md` / `TODO-trim.md` / etc. as scope grows; no fixed schema) and `LOG.md` (append-only history). Replaces the prior workspace's `OUTLINE.md` which was doing triple-duty (paper plan + section budget + audit findings); paper plan and section budget now live in the `OUT.*.md` manifests, audit findings live in `audits/`.
 - [ ] **B3. Per-paper `meta.md`** with title / anonymized author block / abstract.
 - [ ] **B4. Per-paper `refs.bib`** vs shared `common/refs.bib` — TBD. Old workspace's `common/refs.bib` (164 entries) is shared. Per-paper bibs are cleaner for submodule independence; shared bib is easier to maintain. Decide before A4 (citation migration).
 
