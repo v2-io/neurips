@@ -385,7 +385,7 @@ Reproduces on `03-llm-hallucinate-bound/out/full-paper.pdf` page 5 (Table 1 — 
 
 **Ask.** Decide and implement one of (b)/(c) — probably (c) at pipeline level since the wide-table case is common for theory papers (architectural classifications, divergence comparisons, hypothesis matrices). Tabularx with default `lXXX` for tables wider than ~4 columns would handle the typical case without author-side configuration.
 
-**Status:** RESOLVED via opt-in marker attribute (commit pending). Implementation chose a hybrid of (c) — pipeline supports tabularx, author opts in per-table via `cols="..."` on the marker. Default behavior preserved: narrow tables continue rendering as natural-width `tabular` (no tabularx tax). Wide tables opt in by writing the column spec on the marker:
+**Status:** RESOLVED-IN-`d4218a8` via opt-in marker attribute. Implementation chose a hybrid of (c) — pipeline supports tabularx, author opts in per-table via `cols="..."` on the marker. Default behavior preserved: narrow tables continue rendering as natural-width `tabular` (no tabularx tax). Wide tables opt in by writing the column spec on the marker:
 
 ```
 > [!table] Class partition over goal/update topology. ^tab-class-partition cols="l X X X"
