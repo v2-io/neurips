@@ -433,6 +433,14 @@ class Builder
   TEX
 
   PREAMBLE_ADDITIONS = <<~TEX.freeze
+    % Lualatex-native Unicode font handling. Replaces the implicit Nimbus
+    % Roman setup pulled in by the NeurIPS sty's \\usepackage{times}, which
+    % is missing em-dash, en-dash, Ł, Č, and other glyphs. TeX Gyre Termes
+    % is the open-source Times-equivalent with full Unicode coverage —
+    % keeps the NeurIPS Times look while rendering everything in our source.
+    \\usepackage{fontspec}
+    \\setmainfont{TeX Gyre Termes}
+
     \\usepackage{amsmath}
     \\usepackage{amssymb}
     \\usepackage{amsthm}
