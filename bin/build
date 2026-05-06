@@ -681,11 +681,16 @@ class Builder
   def render_template(meta, body_tex)
     template = TEMPLATE.read
 
-    # Replace title
-    template = template.sub(/\\title\{[^}]*\}/) { "\\title{#{meta.title}}" }
+    # Replace title — anchored to line-start so we skip `\title{}` occurrences
+    # inside comment lines (the template has `% Note. ... both \title{} and
+    # \workshoptitle{} are required...` which otherwise eats the substitution
+    # and leaves the actual title-line at the template default).
+    template = template.sub(/^\\title\{[^}]*\}/) { "\\title{#{meta.title}}" }
 
-    # Replace author block (multi-line; from \author{ to its closing })
-    template = template.sub(/\\author\{.*?\n\}\n/m) { "#{render_author_block(meta)}\n" }
+    # Replace author block (multi-line; from `\author{` at line start to its
+    # closing `}\n`). Same line-anchoring as title to avoid commented-out
+    # `\author{}` examples.
+    template = template.sub(/^\\author\{.*?\n\}\n/m) { "#{render_author_block(meta)}\n" }
 
     # Replace abstract
     template = template.sub(/\\begin\{abstract\}.*?\\end\{abstract\}/m) do
