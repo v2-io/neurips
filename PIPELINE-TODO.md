@@ -493,3 +493,60 @@ Reverted all my source-side workarounds back to AUTHORING-canonical / source-ori
 - Multi-cite at page 27 line 1192 renders oddly because of the missing `wu-grama-szpankowski-2024` key disrupting sort&compress. Resolves when bib entry lands.
 
 **Net post-revert state:** 2 active pipeline bugs visible (smart-quote, list-renumber) + 1 content-side bibkey gap. Source files now in AUTHORING-canonical form across all segments.
+
+### [03-llm-hallucinate-bound + general] `[[#^anchor]]` to a not-yet-defined label crashes the build (hyperref endlink/startlink nesting fatal) — flagged 2026-05-06 by 03-llm-hallucinate migration agent
+
+**Symptom.** Any `[[#^anchor]]` reference to an anchor that doesn't yet exist in any segment of the manifest produces a fatal lualatex build crash with the opaque error `! error: (pdf backend): 'endlink' ended up in different nesting level than 'startlink'`. The natural-LaTeX behavior for an undefined cross-ref is a *warning*, not a crash. The fatal escalation is hyperref's interaction — `\Cref{}` to an undefined label produces a malformed link state that pdftex can't close cleanly.
+
+**Reproduction.**
+
+- Paper directory: `/Users/josephwecker-v2/src/neurips/03-llm-hallucinate-bound/`
+- Build command: `bin/build 03-llm-hallucinate-bound re-paper`
+- Manifest: `OUT.re-paper.md` (references only `src/re/01-introduction.md` + `src/references.md`)
+- Failing source: `src/re/01-introduction.md` has three `[[#^lem-attention-coupled]]` references on lines 17, 25, 29. The `^lem-attention-coupled` anchor isn't defined in any segment of the manifest (it lives in `src/06-discussion.md` of the original `src/`, but that segment isn't included in `OUT.re-paper.md`).
+
+Build log warnings (LaTeX is OK with these — they're warnings):
+
+```
+LaTeX Warning: Reference `lem-attention-coupled' on page 1 undefined on input line 211.
+LaTeX Warning: Reference `lem-attention-coupled' on page 1 undefined on input line 239.
+LaTeX Warning: Reference `lem-attention-coupled' on page 1 undefined on input line 243.
+```
+
+Build log fatal (hyperref escalates to fatal):
+
+```
+! error: (pdf backend): 'endlink' ended up in different nesting level than 'startlink'
+! ==> Fatal error occurred, no output PDF file produced!
+```
+
+The crash happens during pdf-backend finalization — after the warnings are emitted. The `\Cref{lem-attention-coupled}` calls in the .tex (visible in `out/re-paper.tex` lines 211, 239, 243) try to wrap a `\hyperlink{...}{Lemma ??}` around the undefined target, and the link state is malformed enough that pdftex can't reconcile it at output time.
+
+**Why this matters.** Incremental authoring of multi-segment papers is the segmented-paper architecture's value proposition. The intended workflow is:
+
+1. Author §1 (Introduction) first as the spine-test, with forward-references to lemmas / theorems / sections that will land in §3 / §5 / §6 later.
+2. Validate the §1 reads cleanly (build + visual review).
+3. Author the next segment, which provides some of the previously-undefined anchors.
+4. Iterate.
+
+Step 1 currently crashes if §1 forward-references any anchor not yet defined. The author has to either:
+
+- (a) Remove every forward-reference to unauthored sections from §1 (defeats the segmented authoring workflow — §1 *should* be able to refer to "Lemma 3.2 (Coupled-class attention connectivity)" before §3 exists).
+- (b) Pre-stub every anchor referenced from §1 in placeholder segments before authoring §1's prose (annoying — turns the workflow inside out).
+- (c) Defer all cross-refs until after every segment is authored, then go back and add them (defeats progressive validation).
+
+None of these match the workflow the segmented-paper architecture invites.
+
+**Workaround applied.** None at source level — this is a pipeline-side issue. Currently blocked: cannot build §1 of the reshape until at least the segments containing `^lem-attention-coupled` and `^thm-track1-uncond` etc. land in `src/re/`.
+
+**Ask.** Several options ranked by implementation complexity:
+
+- *(a) Pre-process `[[#^anchor]]` references at segment-prep level.* Detect anchor references, scan the manifest's segments for `^anchor` definitions, and replace unresolved references with literal placeholder text (e.g., `[?]` or `[unresolved-ref]`) before LaTeX generation. This avoids generating `\Cref{undefined}` entirely and stays inside the parser's existing pre-processing pipeline.
+- *(b) Wrap `\Cref{}` in defensive `\ifcsname r@x\endcsname` at LaTeX-generation time*, so undefined labels become bracketed placeholders rather than malformed hyperref links. One-line converter change.
+- *(c) Adjust hyperref config to be more tolerant.* `\hypersetup{breaklinks=true}` or `\hypersetup{linktoc=section}` may help; the `cleveref` package itself supports `noabbrev` mode that can sometimes avoid the link nesting. Less robust than (a) or (b) — depends on hyperref internals.
+
+Option (a) is the cleanest. It also makes the failure mode visible in the PDF (the placeholder text says "this cross-ref is unresolved"), which matches reasonable expectations for incremental-authoring builds.
+
+**Severity.** Blocking for incremental authoring of multi-segment papers. Affects all three papers in principle (any agent authoring §1 first with forward-refs to later sections will hit this).
+
+**Status:** OPEN
