@@ -154,6 +154,20 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
   }.freeze
   ESCAPE_RE = /[%&_#~^]/
 
+  # Codespans (backtick-wrapped inline content) are the escape hatch for
+  # literal LaTeX characters — raw-TeX passthrough doesn't apply here. Author
+  # writing `\Cref{thm-main}` inside backticks means "render the literal
+  # string `\Cref{thm-main}`", not "execute the cleveref command." So we
+  # apply the FULL escape inside codespans (backslash, braces, dollar, plus
+  # everything in ESCAPE_MAP).
+  CODESPAN_ESCAPE_MAP = ESCAPE_MAP.merge(
+    "\\" => "\\textbackslash{}",
+    "{"  => "\\{",
+    "}"  => "\\}",
+    "$"  => "\\$"
+  ).freeze
+  CODESPAN_ESCAPE_RE = /[\\{}$%&_#~^]/
+
   # Obsidian-callout types that map to amsthm-style numbered environments.
   # All share a single counter via amsthm's optional-counter mechanism.
   THEOREM_LIKE = %w[
@@ -177,7 +191,12 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
   # at the text level before the special-character escape pass.
   def escape(str) = str.gsub(CREF_PATTERN) { "\\Cref{#{Regexp.last_match(1)}}" }.gsub(ESCAPE_RE, ESCAPE_MAP)
 
+  # Full-escape variant for codespan content. See CODESPAN_ESCAPE_MAP comment.
+  def codespan_escape(str) = str.gsub(CODESPAN_ESCAPE_RE, CODESPAN_ESCAPE_MAP)
+
   # ── Element converters ───────────────────────────────────────────────────
+
+  def convert_codespan(el, _opts) = "\\texttt{#{codespan_escape(el.value)}}"
 
   def convert_header(el, opts)
     raw_title = inner(el, opts)
