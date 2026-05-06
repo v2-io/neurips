@@ -87,6 +87,18 @@ Single uniform shape. **No** `\begin{align}`, `\begin{align*}`, `\begin{equation
 
 *Open (#6 in the rule discussion):* current convention is good enough; we'll revisit if a cleaner block-math syntax emerges.
 
+**Blank lines around block math.** `$$...$$` only renders as displayed (centered, on its own line) if it has a blank line before AND after. A `$$...$$` immediately following a bold-prefix paragraph header (no blank line between) gets demoted to inline math by kramdown — compiles cleanly but renders as `$math$` after the heading rather than as a centered display block. If you want display rendering: insert blank lines.
+
+```
+**Strategic tempo (aggregate form).**
+
+$$
+\mathcal T_\Sigma^{\mathrm{agg}} \;:=\; \sum_{(i,j) \in E} \nu_{ij} \cdot \iota_{ij} \cdot \eta_{\mathrm{edge}, ij}.
+$$
+
+The per-element product factors three considerations: ...
+```
+
 ### 1.7 Equation numbering and reference
 
 **Authors do not type equation numbers.** Each equation gets an anchor; references use Obsidian wikilink form:

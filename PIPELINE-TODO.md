@@ -221,7 +221,7 @@ The build emits this paragraph as a `\begin{tabular}{lllll}` with `\toprule`...`
 
 **Ask.** The custom kramdown parser already extends inline math to recognize `$x$` (single-dollar form). It probably needs to also mask `|` characters inside `$...$` spans before kramdown's table-detection pass runs. Otherwise the workaround `\lvert/\rvert` becomes mandatory project-wide for any paper with absolute values or norms in prose-embedded math, which is friction worth removing.
 
-**Status:** OPEN
+**Status:** RESOLVED-IN-`7d0c491`. Pre-process masks `|` inside `$...$` and `$$...$$` to a sentinel character (`\x01`) before kramdown parses, then post-processes the rendered output to restore. Block math runs first so the inline pass doesn't mis-eat. The migration agent's `\lvert/\rvert` workaround can be reverted to bare `|...|` in math.
 
 ### [02-unified-convergence-rl] Three kramdown-converter rendering bugs surfaced during paper-#2 migration — flagged 2026-05-05 by migration-agent-2
 
@@ -276,4 +276,9 @@ renders as a `\begin{tabular}{lll}…\end{tabular}` block — kramdown sees the 
 
 *Ask.* The single-dollar math span parser should claim `|` characters inside `$…$` (and `$$…$$`) before the table parser sees them. The escape-hatch `\,|\,` or `\lvert…\rvert` works as a workaround but again drifts authoring from the natural inline form. The legacy paper-draft.md compiled cleanly under pandoc which doesn't have this kramdown-specific quirk.
 
-**Status:** OPEN
+**Status:**
+  • Bug 1 (bold-prefix + display math) — DOCUMENTED-IN-AUTHORING `§1.6`. Standard kramdown behavior; `$$...$$` immediately after a bold-prefix line (no blank line) is demoted to inline by markdown spec. Authoring requirement: blank lines around block math. Not a converter override (would surprise authors who rely on standard markdown semantics elsewhere).
+  • Bug 2 (`[[#^anchor]](text)` link interference) — RESOLVED-IN-`7d0c491`. Override `convert_a` detects the wikilink-eaten-by-link-parser pattern and re-emits as `\Cref{anchor}(href)` (or `\eqref` for `eq-` prefix).
+  • Bug 3 (pipe-in-math table-detection) — RESOLVED-IN-`7d0c491` (same fix as flag above; `|` inside `$...$` and `$$...$$` masked to sentinel before kramdown parses).
+
+Verified: `bin/build 02-unified-convergence-rl full-paper` now succeeds end-to-end.
