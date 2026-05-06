@@ -427,3 +427,27 @@ Reproduces on `03-llm-hallucinate-bound/src/06-discussion.md` §6.4 (Conditions 
 **Ask.** Kramdown's ordered-list parser should treat display math as part of the list-item content (or at least as a soft break that doesn't terminate the enumerate). Standard markdown allows blank-line-separated paragraphs within a list item under sufficient indentation; kramdown might already support this with the right indentation pattern, but the AUTHORING-typical form (display math as a top-level block, not indented) doesn't trigger it. Pipeline-side options: (a) detect display math between consecutive numbered list items and emit a single enumerate spanning them; (b) document the indentation pattern in AUTHORING that keeps a list together across display equations. Either would let authors keep the semantic-list form.
 
 **Status:** OPEN
+
+### [01-tragedy-confident-agent + general] `~` and `\&` inside `\cite[...]{}` postnote get escaped — flagged 2026-05-06 by 01-tragedy citation-migration agent
+
+**Symptom.** Standard LaTeX cite postnotes use `~` (non-breaking space) and `\&` (escaped ampersand) — e.g. `\cite[ch.~4 \& 9]{khalil-2002-nonlinear}` per natbib convention. Kramdown's escape pass mangles these to `\textasciitilde{}` and `\\&` respectively even when they appear inside the bracketed postnote argument of a raw `\cite` command. Result: build fails with "Misplaced alignment tab character &" because `\\&` is reserved for tabular row breaks, and the tilde substitution displaces the spacing.
+
+Concrete example that broke pass-1 lualatex:
+
+```
+\citet[ch.~4 \& 9]{khalil-2002-nonlinear}
+```
+
+becomes in the rendered tex:
+
+```
+\citet[ch.\textasciitilde{}4 \\& 9]{khalil-2002-nonlinear}
+```
+
+**Workaround applied.** Source-side: replaced `~` with plain space and `\&` with " and " in all `\cite[postnote]{key}` instances across `01-tragedy-confident-agent/src/`. Loses the typographic non-breaking-space inside chapter / section / page references but renders correctly. Concrete forms now in source: `\cite[ch. 9]{...}`, `\cite[chs. 4 and 9]{...}`, `\cite[§3.4--3.5]{...}`, `\cite[Theorem 5.1.1]{...}`. The en-dash `--` and `§` survive the escape pass cleanly.
+
+Secondary observation worth noting: the rendered postnote position is `[N] postnote` (e.g. `[22] p. 4`) rather than the conventional `[N, postnote]`. This is the natbib super style's interaction with the `\citet` redefinition (`\renewcommand{\citet}[2][]{\citeauthor{#2}~\citeyear{#2}\citep[#1]{#2}}`) — the `\citep[note]{key}` ends up emitting the note outside the brackets under the `\NAT@open=[`, `\NAT@close=]` overrides. Cosmetic; semantically clear; not blocking. Worth a fix if the natbib mechanic is easy.
+
+**Ask.** Pipeline-side, the kramdown escape pass should leave `~` and `\&` untouched inside the bracketed argument of `\cite` / `\citet` / `\citep` / `\citealp` (treat the postnote as raw-TeX passthrough, since the entire `\cite{}` form already is). Detection: after a `\cite[tp]?\b` token, the immediately-following `[...]` argument is part of the cite — treat its contents as raw TeX. Once landed, the per-paper sources can revert to standard `~` / `\&` in postnotes.
+
+**Status:** OPEN
