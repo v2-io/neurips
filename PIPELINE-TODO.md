@@ -25,7 +25,7 @@ The build pipeline's lint pass should warn on (or convert / strip) authoring pat
 - [x] **B2.** Bold-prefix paragraph headings auto-converted in `convert_p` (top-level only; list-item / blockquote context skipped) — done `56b0960`.
 - [x] **B3.** Manual `\tag{N}` lint warning in `convert_math` — done `a5756c5`.
 - [x] **B4 / B5.** Segment-source anonymization scanner using `refs/deny-list.yml` (DOIs, authors, proper-nouns) — done `c7a8d60`. PDF-level scan stays a separate post-build step.
-- [ ] **B6. `[!figure]` callout body resolution** — currently emits body verbatim. Should detect markdown image link `![alt](path)` inside the callout body and render as `\includegraphics[width=...]{path}` with caption / label from the marker. Image path resolution: relative to paper-dir.
+- [x] **B6.** `convert_standalone_image` override — single `\includegraphics{}` inside [!figure] callout's `\begin{figure}` wrapper, no double-wrap — done `53970de`.
 
 ## C. Phase B converter work
 
@@ -44,7 +44,7 @@ The build pipeline's lint pass should warn on (or convert / strip) authoring pat
 
 - [x] **C4.** Anchored equations: `$$ ... $$ ^eq-name` rewritten to `\begin{equation}\label{}...\end{equation}` (or `\begin{align}\label{}...\end{align}` for `aligned` content); `eq-` prefixed cross-refs route to `\eqref{}` instead of `\Cref{}` — done `1468878`.
 
-- [ ] **C5. Cleveref config audit** — verify `\Cref` produces the right type label for every callout type (theorem / lemma / corollary / proposition / definition / remark / table / figure / section / equation / appendix). Some may need explicit `\crefname{}` / `\Crefname{}` setup beyond the current preamble defaults.
+- [x] **C5.** Cleveref names added for conjecture / claim / hypothesis / appendix (had `\newtheorem` defs but no `\crefname`) — done `821ab8a`. All callout types and structural envs now have explicit crefname entries.
 
 - [ ] **C6. `\paragraph{}` / acknowledgment behavior** — when AUTHORING §1.9 detection lands, verify the rendered paragraph headings interact correctly with `\Cref` (paragraphs aren't typically cleveref-cross-referenced, but should fail gracefully).
 
