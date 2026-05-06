@@ -540,12 +540,16 @@ class Builder
     \\crefname{lemma}{Lemma}{Lemmas}
     \\crefname{corollary}{Corollary}{Corollaries}
     \\crefname{proposition}{Proposition}{Propositions}
+    \\crefname{conjecture}{Conjecture}{Conjectures}
+    \\crefname{claim}{Claim}{Claims}
+    \\crefname{hypothesis}{Hypothesis}{Hypotheses}
     \\crefname{definition}{Definition}{Definitions}
     \\crefname{remark}{Remark}{Remarks}
     \\crefname{table}{Table}{Tables}
     \\crefname{figure}{Figure}{Figures}
     \\crefname{equation}{Equation}{Equations}
     \\crefname{section}{Section}{Sections}
+    \\crefname{appendix}{Appendix}{Appendices}
   TEX
 
   def initialize(paper_dir, manifest_stem)
