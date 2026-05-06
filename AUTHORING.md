@@ -449,7 +449,7 @@ Concrete workflow when migrating a paper from the old workspace at `~/src/neurip
 
     The rule of thumb: *"is the pipeline supposed to handle this per AUTHORING.md?"* — if yes and it doesn't, that's a pipeline bug; if no, that's content. When in doubt, flag — false positives are cheap, silent compromises are expensive.
 11. **Per-paper trackers.** Initialize `TODO.md` (capture remaining work) and `LOG.md` (capture the migration milestone) at the submodule root.
-12. **Commit per milestone — to your submodule, not the umbrella.** Your `cwd` (`~/src/neurips/0N-{slug}/`) is *its own git repo*, separate from the umbrella's. `git status` from there shows only your paper's working tree. Commit + push frequently — segmentation chunk, manifest write, citation sweep, heading sweep, anonymization sweep, build-verify each get their own commit. Don't lump them together; separate concerns make the diff reviewable. Use `git commit -- <pathspec>` form to bound scope. After each `git commit`, `git push origin main` so the work is durable beyond your machine. The umbrella's pointer to your submodule is the umbrella owner's concern; they advance it when ready. See `AGENTS.md` §1 for the umbrella + submodule shape.
+12. **Commit per milestone.** Don't lump segmentation + manifests + cite migration + heading sweep into one commit; separate concerns make the diff reviewable. Use `git commit -- <pathspec>` form to bound scope. Push to your paper's remote regularly.
 
 If something blocks (bib-key mismatch, ambiguous cite, math segment that won't compile, anonymization edge case), drop a flag in the umbrella's `MIGRATE-TODO.md` or the per-paper `TODO.md` and continue with non-blocked work; come back when the blocker resolves.
 
