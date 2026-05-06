@@ -563,7 +563,13 @@ class Builder
 
     % Hyperref boxes off — visually quieter prose; reviewers see plain text
     % rather than colored frames around every \\Cref / \\cite / footnote.
-    \\hypersetup{hidelinks}
+    % breaklinks=true: allow links to break across page boundaries by
+    % closing-and-reopening rather than emitting a single span. Without it,
+    % a hyperlink (cite, cref) that spans a page break causes pdftex's
+    % pdf-backend to fatal with `'endlink' ended up in different nesting
+    % level than 'startlink'` — opaque error, no PDF output. Surfaced when
+    % 03-llm-hallucinate-bound's reshape spine-test build crashed at page 2.
+    \\hypersetup{hidelinks,breaklinks=true}
 
     % natbib-super defaults: \\NAT@open / \\NAT@close are empty (no brackets),
     % \\NAT@super@kern adds visible kerning inside what brackets do exist.
@@ -649,10 +655,11 @@ class Builder
   TEX
 
   def initialize(paper_dir, manifest_stem)
-    @paper_dir     = (ROOT / paper_dir).expand_path
-    @manifest_stem = manifest_stem
-    @out_dir       = @paper_dir / "out"
-    @lint_findings = []
+    @paper_dir          = (ROOT / paper_dir).expand_path
+    @manifest_stem      = manifest_stem
+    @out_dir            = @paper_dir / "out"
+    @lint_findings      = []
+    @has_unresolved_refs = false
   end
 
   def call
@@ -662,6 +669,7 @@ class Builder
     manifest = Manifest.new(@paper_dir / "OUT.#{@manifest_stem}.md")
 
     body_tex = assemble_body(manifest)
+    body_tex = resolve_unresolved_refs(body_tex)
     full_tex = render_template(meta, body_tex)
 
     FileUtils.mkdir_p(@out_dir)
@@ -675,6 +683,98 @@ class Builder
   end
 
   private
+
+  # Replace `\Cref{X}` / `\eqref{X}` / `\cite[opt]{X}` (and natbib variants)
+  # that point to undefined labels or bib-keys with a visible placeholder
+  # rather than letting LaTeX/hyperref crash. Without this guard, an
+  # unresolved `\Cref{anchor}` or `\cite{missing-key}` under super-style
+  # natbib + hyperref produces the opaque pdf-backend fatal
+  # `'endlink' ended up in different nesting level than 'startlink'` and
+  # emits NO PDF — hard-blocking the incremental-authoring workflow that
+  # makes segmented papers worthwhile. (Plain LaTeX would have warned and
+  # rendered `??` / `[?]`; hyperref escalates to fatal because the link
+  # state is malformed.)
+  #
+  # The fix walks the assembled body and:
+  #  - Collects every `\label{X}` definition into a set; rewrites unresolved
+  #    `\Cref{X}` / `\eqref{X}` to `[?~label]` (visible in PDF, lint warning).
+  #  - Loads valid bib-keys from `refs/entries/*.yml`; rewrites every
+  #    `\cite[opt]{a,b,c}` to drop unknown keys and append `[?~unknown-key]`
+  #    placeholders. Resolved keys pass through unchanged; partial-resolution
+  #    keeps the known cites working.
+  #
+  # Resolves PIPELINE-TODO inbox flag `[03-llm-hallucinate-bound + general]
+  # [[#^anchor]] to a not-yet-defined label crashes the build` (2026-05-06).
+  # The flag was titled around `[[#^anchor]]` but the same hyperref nesting
+  # crash is triggered by undefined `\cite{}` keys; both are handled here.
+  # Placeholder for unresolved cross-refs / cite-keys. Visible in the rendered
+  # PDF (so the author sees that the reference is unresolved) without
+  # triggering hyperref's link-state machinery — that's why the placeholder
+  # is plain text rather than `\textbf{...}` or `\textit{...}`. Empirically
+  # `\textbf{[?~label]}` re-triggers the same hyperref endlink/startlink
+  # nesting fatal that the placeholder is supposed to avoid (likely because
+  # `\textbf` interacts with hyperref's link-state tracking around the
+  # surrounding cite/cref calls). Plain bracketed text with `\,` thin space
+  # has no such interaction.
+  UNRESOLVED_PLACEHOLDER = ->(label) { "[?\\,#{label}]" }
+  CITE_CMD_RE            = /\\(cite|citet|citep|citealt|citealp|citeauthor|citeyear)\*?(\[[^\]]*\])?\{([^}]+)\}/.freeze
+
+  # Set of bib-keys bibtex will resolve at compile time. Prefer parsing the
+  # paper's local `refs.bib` (the authoritative artifact bibtex actually reads
+  # via BIBINPUTS) when present; fall back to the umbrella's `refs/entries/`
+  # for fresh papers that haven't run `bin/refs emit` yet. The local-refs.bib
+  # path matters for `00-test-paper` which has a hand-curated refs.bib whose
+  # keys diverge from the umbrella canonical form (e.g., `boyd-1994-lmi` vs
+  # `boyd-ghaoui-feron-balakrishnan-1994-lmi`).
+  def valid_bib_keys
+    @valid_bib_keys ||= begin
+      local_bib = @paper_dir / "refs.bib"
+      if local_bib.exist?
+        local_bib.read.scan(/^@\w+\{([^,\s]+)\s*,/).flatten.to_set
+      else
+        (ROOT / "refs" / "entries").glob("*.yml").map { |p| p.basename(".yml").to_s }.to_set
+      end
+    end
+  end
+
+  def resolve_unresolved_refs(body_tex)
+    defined    = body_tex.scan(/\\label\{([^}]+)\}/).flatten.to_set
+    unresolved_refs = []
+
+    rewritten = body_tex.gsub(/\\(?:Cref|eqref)\{([^}]+)\}/) do
+      label = Regexp.last_match(1)
+      if defined.include?(label)
+        Regexp.last_match(0)
+      else
+        unresolved_refs << label
+        UNRESOLVED_PLACEHOLDER.call(label)
+      end
+    end
+
+    unresolved_cites = []
+    valid = valid_bib_keys
+    rewritten = rewritten.gsub(CITE_CMD_RE) do
+      cmd, opt, keys = Regexp.last_match(1), Regexp.last_match(2), Regexp.last_match(3)
+      key_list      = keys.split(",").map(&:strip)
+      known         = key_list.select { |k| valid.include?(k) }
+      unknown       = key_list - known
+      unresolved_cites.concat(unknown)
+
+      if unknown.empty?
+        Regexp.last_match(0)
+      elsif known.empty?
+        unknown.map { |k| UNRESOLVED_PLACEHOLDER.call(k) }.join(", ")
+      else
+        # Partial resolution: keep the known cite call, append unknown placeholders.
+        "\\#{cmd}#{opt}{#{known.join(',')}} " + unknown.map { |k| UNRESOLVED_PLACEHOLDER.call(k) }.join(", ")
+      end
+    end
+
+    unresolved_refs.uniq.each  { |l| @lint_findings << "unresolved cross-ref: #{l}" }
+    unresolved_cites.uniq.each { |k| @lint_findings << "unresolved cite-key: #{k} (run `bin/refs add` to land the entry)" }
+    @has_unresolved_refs = !unresolved_refs.empty? || !unresolved_cites.empty?
+    rewritten
+  end
 
   def assemble_body(manifest)
     body         = +""
@@ -877,14 +977,30 @@ class Builder
       "\\begin{abstract}\n#{abstract_tex}\n\\end{abstract}"
     end
 
-    # Citation options BEFORE \usepackage{neurips_2026} (sty loads natbib internally,
-    # so the options must be passed before the sty is loaded).
+    # Citation options BEFORE \usepackage{neurips_2026} (sty loads natbib + hyperref
+    # internally, so options must be passed before the sty is loaded). Same
+    # splice point handles the conditional hyperref `draft` option-pass when
+    # the build has unresolved cross-refs / cite-keys (see resolve_unresolved_refs).
+    # Without `draft=true`, lualatex's pdf-backend can fatal on
+    # `'endlink' ended up in different nesting level than 'startlink'` during
+    # pass 3 — an opaque error that emits NO PDF and hard-blocks incremental
+    # builds of multi-segment papers. Hyperref reads `draft` only at
+    # \usepackage time; `\hypersetup{draft=true}` later is silently ignored
+    # ("Option `draft' has already been used, setting the option has no
+    # effect"), so the option must come BEFORE the sty loads. The
+    # `[?\,label]` placeholder text from resolve_unresolved_refs already
+    # conveys unresolved state visibly; sacrificing clickable hyperlinks in
+    # this transitional state is a fair trade. Resolved-ref builds (full-
+    # paper, neurips-2026-paper after content migration completes) keep
+    # normal hyperref behavior.
+    pre_sty_options = String.new(CITATION_OPTIONS)
+    pre_sty_options << "\\PassOptionsToPackage{draft}{hyperref}\n" if @has_unresolved_refs
     template = template.sub("\\usepackage{neurips_2026}") do
-      "#{CITATION_OPTIONS}\\usepackage{neurips_2026}"
+      "#{pre_sty_options}\\usepackage{neurips_2026}"
     end
 
     # Other preamble additions (theorem envs + cleveref + hidelinks + \citet redef)
-    # right before \begin{document}
+    # right before \begin{document}.
     template = template.sub("\\begin{document}") { "#{PREAMBLE_ADDITIONS}\n\\begin{document}" }
 
     # Replace body: from after \begin{abstract}...\end{abstract} to \end{document}.
