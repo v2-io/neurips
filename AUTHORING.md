@@ -191,6 +191,8 @@ The OUT.*.md manifest's `Type` column drives the `\appendix` directive — the b
 
 `$$x$$` form is also valid for inline; either is parsed correctly.
 
+**Pipe characters inside math are safe.** Bare `|` (conditional probability `P(A | B)`), `\|` (norm `\|x\|`), and absolute-value forms `|x|` all work freely inside `$...$` and `$$...$$`. The build pre-masks math-internal pipes before kramdown parses, so they never trigger the markdown table heuristic — authors don't need `\mid` / `\Vert` / `\lvert..\rvert` substitutions for pipeline reasons. (Use `\mid`, `\Vert`, `\lvert..\rvert` only when you want their distinct LaTeX spacing semantics — relation spacing for conditional, ordinal spacing for absolute value, etc.)
+
 ### 2.2 Cross-references
 
 `[[#^anchor]]` (Obsidian native). Renders as `\Cref{anchor}` for typed references (cleveref auto-types the noun: "Theorem N", "Lemma N", "Section N", "Table N", "Figure N"). Anchors prefixed `eq-` route to `\eqref{anchor}` instead, producing the conventional parenthesized form `(N)` that math-paper readers expect for equation references. Reserve the `eq-` prefix for equation anchors only.
@@ -222,6 +224,17 @@ Rendered (bracketed-superscript per `REFS-AND-CITATIONS.md`):
 `key` is the BibTeX entry key in the paper's `refs.bib`. Bib keys are canonical — no same-year ambiguity (the Hintikka-1991 problem disappears), no multi-author truncation question. Editor / IDE completion makes lookup ergonomic; the cognitive shape matches our other key-form anchors (`[[#^thm-main]]`).
 
 Raw `\cite{}` passes through the converter unchanged (raw-TeX passthrough policy); the build's natbib config drives the rendering. Switching from numeric to author-year or back is a one-line config change with no author-side impact.
+
+**Postnote form `\cite[postnote]{key}`** — standard natbib bracketed postnote works for chapter / section / theorem references. The full postnote scope is treated as raw-TeX passthrough: `~` (non-breaking space), `\&` (escaped ampersand), `§`, en-dashes, and other LaTeX-specific characters pass through unchanged. Concrete forms:
+
+```
+\cite[ch.~4 \& 9]{khalil-2002-nonlinear}
+\cite[Theorem 6.3]{kallenberg-2002-foundations}
+\cite[§3.4--3.5]{anderson-moore-1979-optimal-filtering}
+\cite[p.~247]{stuart-2010-acta}
+```
+
+All variants (`\citet[opt]{key}`, `\citep[opt]{key}`, `\citealt[opt]{key}`, etc.) accept the postnote bracket. Authors should use the natbib-conventional `~` and `\&` forms; no source-side workarounds (` ` for `~`, " and " for `\&`) needed.
 
 The legacy `[Author Year]` source convention from the prior workspace is deprecated. Existing segments will be migrated via `bin/migrate-cites` (see `PIPELINE-TODO.md` §C1).
 
