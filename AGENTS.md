@@ -14,7 +14,20 @@ You're a fresh agent on this project. Read in this order:
 4. **LOG.md** — recent project history.
 5. **MIGRATE-TODO.md** — the restructure / per-paper-migration backlog status.
 
-Then: start work. Build as you go (`bin/build <paper-dir>` for paper builds; `bundle exec rubocop` for Ruby edits). Commit per milestone with `git commit -- <pathspec>` form to bound scope.
+### Where you're working: umbrella + submodules
+
+`~/src/neurips/` is the **umbrella repo**. Inside it, each per-paper directory (`01-tragedy-confident-agent/`, `02-unified-convergence-rl/`, `03-llm-hallucinate-bound/`) is its **own git repo** — a submodule pointed at a separate GitHub repo (`v2-io/paper-tragedy-confident-agent`, etc.). Two layers:
+
+- **Umbrella (`~/src/neurips/`)** — owns shared infrastructure: `bin/build`, `bin/refs`, `common/` (NeurIPS template + sty), `refs/` (bib database), the umbrella-level docs (AGENTS, AUTHORING, MIGRATE-TODO, PIPELINE-TODO, LOG). Build / pipeline / bib / process changes commit here.
+- **Submodule (`~/src/neurips/0N-{slug}/`)** — owns *that paper's content*: segments under `src/`, manifests `OUT.*.md`, `meta.md`, per-paper `TODO.md` / `LOG.md`, audits / spikes / simulations / results / out / _archive. Paper-content changes commit here, pushed to the paper's own GitHub remote.
+
+**If you're a per-paper / migration agent:** your `cwd` is `~/src/neurips/0N-{slug}/`. `git status` shows your paper-repo's working tree only. **Commit to your submodule frequently** (per milestone — segmentation chunk, manifest write, citation sweep, heading sweep, etc.), and **push to your remote** (`git push origin main`) so the work is durable beyond your machine. Use `git commit -- <pathspec>` form to bound scope.
+
+**The umbrella's submodule pointer** (the SHA the umbrella tracks for your paper) is a separate concern — when you commit + push your paper, the umbrella owner advances the pointer with `git add 0N-{slug} && git commit` from the umbrella root. You don't need to do that yourself; the umbrella owner picks it up.
+
+**Pipeline tooling at umbrella level.** `bin/build 0N-{slug}` and `bin/refs <subcommand>` are run *from the umbrella root*, taking your paper-dir as argument. Your `cwd` doesn't need to change; just `bin/build 01-tragedy-confident-agent` works as long as the umbrella root is your working directory or the script is invoked with its full path. The bib database (`refs/`) is umbrella-shared — entries you add via `bin/refs add` are visible to all three papers.
+
+Then: start work. Build as you go (`bin/build <paper-dir>` for paper builds; `bundle exec rubocop` for Ruby edits). Commit + push per milestone.
 
 ---
 
