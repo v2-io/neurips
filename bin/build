@@ -215,6 +215,11 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
     rendered.sub(PARAGRAPH_HEADING_RE) { "\\paragraph{#{Regexp.last_match(1)}} " }
   end
 
+  # Lint rule §B1: manual heading numbering ("## 3. Title", "### 3.1 Subtitle")
+  # violates AUTHORING §1.8 — LaTeX numbers automatically. Warn so migration
+  # agents see these and strip during their pass.
+  MANUAL_HEADING_NUMBER_RE = /\A(?:\d+\.)+\d*\s+/
+
   def convert_header(el, opts)
     raw_title = inner(el, opts)
     starred   = false
@@ -222,12 +227,25 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
       raw_title = raw_title.sub(HEADER_UNNUMBERED, "")
       starred   = true
     end
+    warning("manual heading numbering — strip per AUTHORING §1.8: #{raw_title.inspect}") if raw_title.match?(MANUAL_HEADING_NUMBER_RE)
     cmd     = header_command(el.options[:level])
     anchor  = el.attr["data-header-anchor"]
     result  = "\\#{cmd}#{'*' if starred}{#{raw_title.strip}}\n"
     result << "\\label{#{anchor}}\n" if anchor && !starred
     result << "\n"
     result
+  end
+
+  # Lint rule §B3: manual \tag{N} in display math violates AUTHORING §1.7
+  # (anchored equations + [[#^eq-name]] cross-refs are the convention).
+  # Warn at conversion time so migration agents see them.
+  MANUAL_TAG_RE = /\\tag\*?\{[^}]+\}/
+
+  def convert_math(el, opts)
+    if el.value.match?(MANUAL_TAG_RE)
+      warning("manual \\tag{} in math — use ^eq-anchor + [[#^eq-anchor]] per AUTHORING §1.7: #{el.value.lines.first.strip.inspect}")
+    end
+    super
   end
 
   def convert_blockquote(el, opts)
