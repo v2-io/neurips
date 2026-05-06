@@ -143,3 +143,64 @@ Reproduces on both `00-test-paper test` and `01-tragedy-confident-agent full-pap
 **Ask.** Title-replacement should target the actual `\title{}` directive (not the in-comment occurrence); options: anchor to start-of-line + skip lines beginning `%`, or match `\title{Formatting Instructions[^}]*}` explicitly, or process the template line-by-line so commented-out forms are skipped. Abstract should be run through the same kramdown→LaTeX pipeline as segment bodies before splicing — currently emphasis / code / cross-refs in the abstract don't render correctly.
 
 **Status:** OPEN
+
+### [01-tragedy] Display math inside Obsidian callout fragments the callout — flagged 2026-05-05 by 01-tragedy migration agent
+
+**Symptom.** A `> [!lemma]` callout with `$$ ... $$` display math in its body emits a fragmented LaTeX result: `\begin{lemma}` ... `\end{lemma}` (closes at the equation), then `\begin{quotation}` (for the rest of the callout body), then `\begin{quote}` (for the trailing sentence after a second equation). The lemma's parts (i)/(ii)/(iii) end up in three different environments, none of them the lemma. Plus the equation env itself sometimes gets a stray blank line between math content and `\label{}`, producing a fatal `Missing $ inserted` from lualatex.
+
+**Context.** Reproduced on `01-tragedy-confident-agent/src/02-persistence.md` migrating Lemma 2.1 (Persistence threshold; Model D, robust form). Source structure was the natural one — lemma callout containing parts (i), (ii) with eq (4a), (iii) with eq (4):
+
+```
+> [!lemma] Persistence threshold; Model D, robust form ^lem-persistence-d
+> Under [[#^eq-mismatch-dyn]]–[[#^eq-sector]] ...
+>
+> *(i) ...* If $\alpha > \rho/R$, then ...
+>
+> *(ii) ...* ... drives every trajectory ... in finite time bounded by
+> $$
+> T_{\mathrm{exit}}(\delta_0) \;\leq\; ...
+> $$ ^eq-exit-time
+>
+> *(iii) ...* ... then under worst-case $w \in \mathcal{W}$,
+> $$
+> \boxed{\;\alpha > \frac{\rho}{R}\;}
+> $$ ^eq-persistence
+> is two-sided ...
+```
+
+The kramdown blockquote terminates at the first `$$`, the equation-rewrite emits the env outside the lemma, and the subsequent `> ` lines start a fresh blockquote (with no callout marker, so default `\begin{quotation}`). This pattern is widespread in theory papers — many lemmas have embedded display math as part of the statement.
+
+**Workaround applied.** Equations pulled out of the lemma callout, placed below it; references from inside the lemma use `[[#^anchor]]`. Works but loses the natural in-statement positioning. See `01-tragedy-confident-agent/src/02-persistence.md` for the current shape.
+
+**Ask.** Display math `$$ ... $$ ^eq-name` (and `$$ ... $$` without anchor) should be supported inside Obsidian callouts. Implementation likely requires the parser to keep the blockquote open across display-math blocks (custom blockquote handling that recognizes `$$ ... $$` as inline content). Equivalent fix would be to recognize `> $$ ... > $$` (display math with `> ` prefix on each line) as blockquoted display math.
+
+**Status:** OPEN
+
+### [01-tragedy + 00-test-paper] Anchored-equation rewriter at segment-prep level doesn't respect codespan boundaries — flagged 2026-05-05 by 01-tragedy migration agent
+
+**Symptom.** When a segment contains a `[!todo]` callout (or any prose) whose body mentions `$$ ... $$` inside backticks (codespan), AND a downstream `$$ ... $$ ^eq-name` anchored display equation, the equation rewrite produces malformed output for the *first* downstream equation: opening `$$` not converted to `\begin{equation}`, math content escaped as prose (e.g., `T_{\mathrm{exit}}` becomes `T\_{\mathrm{exit}}`, `\|\delta_0\|` becomes `|\delta\_0|`), trailing `{:/nomarkdown}` artifact emitted. The next `$$ ... $$ ^eq-name` in the same segment renders correctly. Lualatex then errors fatally on the `\end{equation}` that closes a non-existent `\begin{equation}`.
+
+**Context.** Reproduced on `01-tragedy-confident-agent/src/02-persistence.md` when an authoring-note callout was placed between Lemma 2.1 and the pulled-out anchored equations:
+
+```
+> [!todo] Authoring note ...
+> ... explanation mentioning `$$ ... $$` syntax ...
+
+The exit-time bound:
+$$
+T_{\mathrm{exit}}(\delta_0) \;\leq\; ...
+$$ ^eq-exit-time
+
+The persistence threshold:
+$$
+\boxed{\;\alpha > \frac{\rho}{R}\;}
+$$ ^eq-persistence
+```
+
+The first equation (`^eq-exit-time`) renders broken; the second (`^eq-persistence`) renders correctly. Removing the [!todo] callout fixes the first equation. Hypothesis: the anchored-equation rewrite operates at segment-prep level (per project LOG: "rewritten ... at the segment-prep level") and pairs `$$` markers naively, including the ones inside backticked codespans in the [!todo] body. The codespan `$$` is treated as an opening delimiter, capturing the actual `$$` of the next display block as its closing delimiter.
+
+**Workaround applied.** Authoring notes moved out of segment `[!todo]` callouts into the per-paper `TODO.md` (under "Known followups").
+
+**Ask.** Segment-prep-level anchored-equation rewriter should respect codespan boundaries — `$$ ... $$` inside backticks shouldn't be treated as math. Implementation: scan for codespans first, mask their content, then run the `$$ ... $$ ^eq-name` rewrite over the masked text.
+
+**Status:** OPEN
