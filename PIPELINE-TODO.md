@@ -222,3 +222,58 @@ The build emits this paragraph as a `\begin{tabular}{lllll}` with `\toprule`...`
 **Ask.** The custom kramdown parser already extends inline math to recognize `$x$` (single-dollar form). It probably needs to also mask `|` characters inside `$...$` spans before kramdown's table-detection pass runs. Otherwise the workaround `\lvert/\rvert` becomes mandatory project-wide for any paper with absolute values or norms in prose-embedded math, which is friction worth removing.
 
 **Status:** OPEN
+
+### [02-unified-convergence-rl] Three kramdown-converter rendering bugs surfaced during paper-#2 migration — flagged 2026-05-05 by migration-agent-2
+
+Build of `02-unified-convergence-rl` `OUT.full-paper.md` (commit `14672ef` + appendix-A) failed at lualatex pass 1 with three distinct kramdown-converter issues. All three are AUTHORING-conformant input that the converter mishandles. Reproducer: `bin/build 02-unified-convergence-rl full-paper`.
+
+**Bug 1 — Bold-prefix paragraph immediately followed by display math emits unbalanced `\begin{equation}…$$`.**
+
+*Symptom.* Source like
+
+```
+**Strategic tempo (aggregate / throughput form).**
+$$\mathcal T_\Sigma^{\mathrm{agg}} \;:=\; \sum_{(i,j) \in E} \nu_{ij} \cdot \iota_{ij} \cdot \eta_{\mathrm{edge}, ij}.$$
+The per-element product factors three distinct considerations: …
+```
+
+renders to:
+
+```
+\paragraph{Strategic tempo (aggregate / throughput form)} 
+\begin{equation}
+\mathcal T_\Sigma^{\mathrm{agg}} \;:=\; \sum_{(i,j) \in E} \nu_{ij} \cdot \iota_{ij} \cdot \eta_{\mathrm{edge}, ij}.$$
+The per-element product factors three distinct considerations: …
+```
+
+— `\begin{equation}` opens but the closing `$$` is left unconverted, and from that point on the entire rest of the segment leaks through as raw markdown (`**…**`, `[[#^…]]`, etc.). Lualatex eventually fails on a `\textasciicircum{}` or `#`-in-horizontal-mode cascade dozens of lines later, but the first error is the unbalanced env.
+
+*Context.* §5 strategic-tempo segment (`src/05-strategic-tempo.md`), §5.1 "aggregate form" sub-block. The pattern is **bold-prefix paragraph header + immediately-following unanchored `$$…$$` display math** with no blank line between. AUTHORING §1.9 (paragraph headings) and §1.6 (display math) both show this is a legal authoring shape. The bold-prefix-paragraph autoconverter (commit `56b0960`, AUTHORING §1.9) rewrites `**Term.** body…` to `\paragraph{Term} body…`; here the "body" is the display math block, which the converter then can't represent inside the `\paragraph{}` argument.
+
+The same pattern occurs in many places throughout the source paper — definition-style blocks where a bolded term names a quantity and the equation defines it. Source `paper-draft.md` (which compiled cleanly under the prior pandoc-based pipeline) uses this pattern ~15+ times.
+
+*Ask.* Either (a) `convert_p` should emit `\paragraph{Term}\n\n` (close the `\paragraph{}` line) when the next element is a block-level node like display math, or (b) flag the pattern as a lint warning so authors know to insert a blank line / use a non-bold-prefix form. Workaround on the authoring side is awkward: separating with a blank line makes the bold-prefix-paragraph have no body-continuation, and the convert_p detection requires "bold span at paragraph start, terminated by period, followed by a space and continuation." Best to fix at the converter level.
+
+**Bug 2 — `[[#^anchor]](text)` parsed as markdown link `[label](url)`.**
+
+*Symptom.* Source `[[#^thm-composition]](v)` (intended to render as `\Cref{thm-composition}(v)` → "Theorem 7.1(v)") instead renders as `\href{v}{[\#\textasciicircum{}thm-composition]}` — kramdown's link parser sees `]]` immediately followed by `(` and merges into a `[label](url)` link with `v` as URL.
+
+*Context.* §2 setup, §9 limitations, §9 conclusion — anywhere "Theorem 7.1(v)" / "(v)" sub-conclusion-of-Theorem 7.1 references appear. Source paper-draft.md uses this textual form `Theorem 7.1(v)` 4–6 times; cleveref's `\Cref{thm-composition}` rendering plus literal "(v)" parenthesis is the natural target.
+
+*Ask.* The `[[#^anchor]]` parser should claim its tokens before the link parser sees them, or at least not let `]]` participate in `[label](url)` matching. A workaround using `[[#^anchor]]\,(v)` (thin space) does break the `]]` immediately-followed-by-`(` adjacency, but it's an authoring drift from "Theorem 7.1(v)" to "Theorem 7.1\,(v)" that not every author will think to apply.
+
+**Bug 3 — Unescaped `|…|` in inline math triggers kramdown table parser.**
+
+*Symptom.* Source paragraph
+
+```
+**Two variation regimes.** [[#^thm-composition]](v) is stated for the *piecewise-stationary* specialization: $B_T + 1$ stationary blocks separated by optimum-change events, with $B_T := |\{t : a^*_t \ne a^*_{t-1}\}|$. $B_T$ and $V_T$ are distinct in general …
+```
+
+renders as a `\begin{tabular}{lll}…\end{tabular}` block — kramdown sees the `|` characters in the inline math as table cell separators and the rest of the paragraph as additional table cells, breaking math content (escaping `_` to `\_`, `^` to `\textasciicircum{}`, etc.).
+
+*Context.* §2 setup ("variation regimes" paragraph), and any other paragraph with unescaped `|…|` in inline math (cardinality `|E|`, absolute value `|x|`, set notation `|\{ … \}|`). The source paper has these in ~10+ places. The kramdown table parser is line-based but can be triggered when a paragraph line contains enough `|` characters that look table-row-shaped. AUTHORING §2.1 says single-`$` inline math should pass through unchanged — but with raw `|` inside, kramdown's other parsers interfere first.
+
+*Ask.* The single-dollar math span parser should claim `|` characters inside `$…$` (and `$$…$$`) before the table parser sees them. The escape-hatch `\,|\,` or `\lvert…\rvert` works as a workaround but again drifts authoring from the natural inline form. The legacy paper-draft.md compiled cleanly under pandoc which doesn't have this kramdown-specific quirk.
+
+**Status:** OPEN
