@@ -7,7 +7,7 @@
 | 1 | Section    | [intro](src/01-introduction.md)     | Introduction                | draft |
 | 2 | Section    | [theory](src/02-theory.md)          | Theory                      | draft |
 | 3 | Section    | [results](src/03-results.md)        | Results                     | draft |
-| – | References | [refs](src/04-references.md)        | References                  | draft |
+| – | Bibliography | [refs](src/04-references.md)      | References (auto via natbib)| draft |
 | A | Appendix   | [proofs](src/A-proofs.md)           | Proofs                      | draft |
 | B | Appendix   | [supp](src/B-supplementary.md)      | Supplementary               | draft |
 | – | Checklist  | [checklist](src/checklist.tex)      | NeurIPS paper checklist     | ready |

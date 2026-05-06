@@ -424,6 +424,14 @@ end
 # ─────────────────────────────────────────────────────────────────────────────
 
 class Builder
+  # Natbib options must be \PassOptionsToPackage'd BEFORE \usepackage{neurips_2026}
+  # since the sty loads natbib internally. Injected at a different splice point
+  # than PREAMBLE_ADDITIONS (which lands right before \begin{document}).
+  CITATION_OPTIONS = <<~TEX.freeze
+    % Bracketed-superscript numeric citations per AUTHORING.md §2.3.
+    \\PassOptionsToPackage{numbers,super,sort&compress}{natbib}
+  TEX
+
   PREAMBLE_ADDITIONS = <<~TEX.freeze
     \\usepackage{amsmath}
     \\usepackage{amssymb}
@@ -433,6 +441,13 @@ class Builder
     % Hyperref boxes off — visually quieter prose; reviewers see plain text
     % rather than colored frames around every \\Cref / \\cite / footnote.
     \\hypersetup{hidelinks}
+
+    % Custom \\citet so narrative cites render `Author Year⁽N⁾` instead of
+    % natbib-super default `Author [N]` (which drops the year). Per
+    % AUTHORING.md §2.3 / REFS-AND-CITATIONS.md §3.4.
+    \\renewcommand{\\citet}[1]{\\citeauthor{#1}~\\citeyear{#1}\\textsuperscript{[\\citenum{#1}]}}
+
+    \\bibliographystyle{unsrtnat}
 
     \\newtheorem{theorem}{Theorem}[section]
     \\newtheorem{lemma}[theorem]{Lemma}
@@ -498,7 +513,11 @@ class Builder
         appendix_set = true
       end
       body << "\n\\newpage\n" if row.type == "checklist"
-      body << render_segment(row)
+      body << if row.type == "bibliography"
+                "\n\\bibliography{refs}\n\n"
+              else
+                render_segment(row)
+              end
     end
     body
   end
@@ -532,7 +551,14 @@ class Builder
       "\\begin{abstract}\n#{meta.abstract}\n\\end{abstract}"
     end
 
-    # Inject preamble additions (theorem envs + cleveref) right before \begin{document}
+    # Citation options BEFORE \usepackage{neurips_2026} (sty loads natbib internally,
+    # so the options must be passed before the sty is loaded).
+    template = template.sub("\\usepackage{neurips_2026}") do
+      "#{CITATION_OPTIONS}\\usepackage{neurips_2026}"
+    end
+
+    # Other preamble additions (theorem envs + cleveref + hidelinks + \citet redef)
+    # right before \begin{document}
     template = template.sub("\\begin{document}") { "#{PREAMBLE_ADDITIONS}\n\\begin{document}" }
 
     # Replace body: from after \begin{abstract}...\end{abstract} to \end{document}.
@@ -557,21 +583,33 @@ class Builder
   end
 
   def compile_pdf(tex_path)
-    env = { "TEXINPUTS" => "#{COMMON_DIR}:" }
-    cmd = [
+    env = {
+      "TEXINPUTS" => "#{COMMON_DIR}:#{@paper_dir}:",
+      "BIBINPUTS" => "#{@paper_dir}:"
+    }
+    lualatex_cmd = [
       "lualatex",
       "-interaction=nonstopmode",
       "-halt-on-error",
       "-output-directory=#{@out_dir}",
       tex_path.to_s
     ]
-    2.times do |pass|
-      out, status = Open3.capture2e(env, *cmd, chdir: @out_dir.to_s)
-      next if status.success?
+    bibtex_cmd = ["bibtex", tex_path.basename(".tex").to_s]
 
-      tail = out.lines.last(40).join
-      raise "lualatex failed (pass #{pass + 1}):\n#{tail}"
-    end
+    # lualatex → bibtex → lualatex → lualatex resolves \cite{} + \Cref{}
+    # cross-references on the third pass; standard latex bibliography dance.
+    run_compile_step(env, lualatex_cmd, "lualatex (pass 1)")
+    run_compile_step(env, bibtex_cmd,   "bibtex", allow_fail: true)
+    run_compile_step(env, lualatex_cmd, "lualatex (pass 2)")
+    run_compile_step(env, lualatex_cmd, "lualatex (pass 3)")
+  end
+
+  def run_compile_step(env, cmd, label, allow_fail: false)
+    out, status = Open3.capture2e(env, *cmd, chdir: @out_dir.to_s)
+    return if status.success? || allow_fail
+
+    tail = out.lines.last(40).join
+    raise "#{label} failed:\n#{tail}"
   end
 
   def report_lint

@@ -1,6 +1,6 @@
 ## Introduction
 
-This is a test paper—its job is to exercise the pipeline, not to make a substantive claim. The Lyapunov-LMI framework[^lmi] established by Boyd, El Ghaoui, Feron, and Balakrishnan (1994) anchors much of the formal-methods community; Anderson (1985) gave the canonical statement of bursting (i.e., transient instability under reduced persistent excitation). The latter is invoked widely (e.g., as a foundational result in adaptive control textbooks). Hasselmo et al. (1995) provides a contrasting cellular-neuroscience anchor for the cross-disciplinary span of this regression target.
+This is a test paper—its job is to exercise the pipeline, not to make a substantive claim. The Lyapunov-LMI framework[^lmi] established by \citet{boyd-1994-lmi} anchors much of the formal-methods community; \citet{anderson-1985-bursting} gave the canonical statement of bursting (i.e., transient instability under reduced persistent excitation). The latter is invoked widely as a foundational result in adaptive control textbooks \cite{anderson-1985-bursting}, alongside cellular-neuroscience work \cite{hasselmo-1995-dynamics}. Multi-cite renders compactly via natbib's `sort&compress`: \cite{anderson-1985-bursting,boyd-1994-lmi,hasselmo-1995-dynamics}.
 
 [^lmi]: LMI = Linear Matrix Inequality. Footnote rendered via raw TeX `\footnote{}` is also fine; this is the markdown form.
 
