@@ -550,23 +550,58 @@ class Builder
     % Custom \\citet so narrative cites render `Author Year⁽N⁾` instead of
     % natbib-super default `Author [N]` (which drops the year). Uses \\citep
     % directly so the bracket / kerning behavior matches the cite form.
-    \\renewcommand{\\citet}[1]{\\citeauthor{#1}~\\citeyear{#1}\\citep{#1}}
+    % Optional postnote support — `\\citet[Theorem 5]{key}` now works.
+    % Default natbib `\\citet` accepts `[postnote]{key}`; our previous redef
+    % took only one arg, dropping the postnote silently and breaking 9+
+    % `\\citet[Theorem N]{...}` cites in 03-llm-hallucinate.
+    \\renewcommand{\\citet}[2][]{\\citeauthor{#2}~\\citeyear{#2}\\citep[#1]{#2}}
 
     \\bibliographystyle{unsrtnat}
 
+    % aliascnt: every theorem-like env shares the *number* of the theorem
+    % counter, but each gets its own counter NAME — so cleveref reads the
+    % distinct type from .aux ("lemma.2.1", "definition.3.1", ...) rather
+    % than seeing everything as "theorem.N.M". Fixes flag where every
+    % \\Cref{lem-...} / \\Cref{def-...} rendered as "Theorem N" because the
+    % shared-counter [theorem] linkage erased the type distinction in .aux.
+    % Canonical cleveref-with-shared-counters recipe (cleveref docs §10).
+    \\usepackage{aliascnt}
+
     \\newtheorem{theorem}{Theorem}[section]
-    \\newtheorem{lemma}[theorem]{Lemma}
-    \\newtheorem{corollary}[theorem]{Corollary}
-    \\newtheorem{proposition}[theorem]{Proposition}
-    \\newtheorem{conjecture}[theorem]{Conjecture}
-    \\newtheorem{claim}[theorem]{Claim}
-    \\newtheorem{hypothesis}[theorem]{Hypothesis}
+
+    \\newaliascnt{lemma}{theorem}
+    \\newtheorem{lemma}[lemma]{Lemma}
+    \\aliascntresetthe{lemma}
+
+    \\newaliascnt{corollary}{theorem}
+    \\newtheorem{corollary}[corollary]{Corollary}
+    \\aliascntresetthe{corollary}
+
+    \\newaliascnt{proposition}{theorem}
+    \\newtheorem{proposition}[proposition]{Proposition}
+    \\aliascntresetthe{proposition}
+
+    \\newaliascnt{conjecture}{theorem}
+    \\newtheorem{conjecture}[conjecture]{Conjecture}
+    \\aliascntresetthe{conjecture}
+
+    \\newaliascnt{claim}{theorem}
+    \\newtheorem{claim}[claim]{Claim}
+    \\aliascntresetthe{claim}
+
+    \\newaliascnt{hypothesis}{theorem}
+    \\newtheorem{hypothesis}[hypothesis]{Hypothesis}
+    \\aliascntresetthe{hypothesis}
 
     \\theoremstyle{definition}
-    \\newtheorem{definition}[theorem]{Definition}
+    \\newaliascnt{definition}{theorem}
+    \\newtheorem{definition}[definition]{Definition}
+    \\aliascntresetthe{definition}
 
     \\theoremstyle{remark}
-    \\newtheorem{remark}[theorem]{Remark}
+    \\newaliascnt{remark}{theorem}
+    \\newtheorem{remark}[remark]{Remark}
+    \\aliascntresetthe{remark}
 
     \\crefname{theorem}{Theorem}{Theorems}
     \\crefname{lemma}{Lemma}{Lemmas}
