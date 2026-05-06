@@ -57,10 +57,6 @@ The build pipeline's lint pass should warn on (or convert / strip) authoring pat
 
 - [ ] **C6. `\paragraph{}` / acknowledgment behavior** — when AUTHORING §1.9 detection lands, verify the rendered paragraph headings interact correctly with `\Cref` (paragraphs aren't typically cleveref-cross-referenced, but should fail gracefully).
 
-## D. Doc consolidation
-
-- [ ] **D1. Consolidate the agent-facing docs.** Currently the umbrella has `AGENTS.md` (process/Ruby/rubocop), `AUTHORING.md` (paper-segment rules), `MIGRATION.md` (migration log), `restructure-plan.md` (active workstream), plus old-workspace material at `~/src/neurips2026/`: `STYLE.md`, `PRAXES.md`, `CLAUDE.md`, `HANDOFF.md`, NeurIPS-related (`common/neurips-main-track-handbook.md`, `common/neurips-guide.md`, `common/metadata-conventions.md`). Soon need to: (a) decide what's canonical here vs old-workspace-leaves; (b) port what's relevant; (c) deduplicate (some prose conventions appear in both `STYLE.md` and `AUTHORING.md`); (d) settle `CLAUDE.md` / `GEMINI.md` symlink target. **Time-box short** (Joseph's framing — "in a short time") so the consolidation doesn't sprawl.
-
 ## E. Pipeline tooling not yet ported
 
 These existed in the old workspace as separate scripts; some may be subsumed by the build's lint pass, others remain useful as standalone tools.
