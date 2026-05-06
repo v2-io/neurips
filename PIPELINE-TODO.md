@@ -558,3 +558,37 @@ Option (a) is the cleanest. It also makes the failure mode visible in the PDF (t
 Verified end-to-end on `03-llm-hallucinate-bound/OUT.re-paper.md` (the agent's blocking reproducer): build succeeds, produces a 4-page PDF with `[?\,label]` placeholders for the four unresolved cross-refs (`lem-attention-coupled`, `thm-fr-uniqueness`, `sec-track1`, `thm-track2-uncond`). Full-paper builds for all three papers continue clean.
 
 Once a paper is content-complete (all forward-refs land + missing bib entries get `bin/refs add`'d), draft mode auto-disables and hyperlinks return.
+
+### [03-llm-hallucinate-bound] Hyperref endlink/startlink crash returns when all cites resolve — flagged 2026-05-06 by paper-3 agent
+
+**Symptom.** Build crashes with the same `! error: (pdf backend): 'endlink' ended up in different nesting level than 'startlink'` fatal as the previously-resolved item above (`RESOLVED-IN-0c2a4f8`). Crash fires on page 2.
+
+**Reproducer.** Two-step toggle on `03-llm-hallucinate-bound/OUT.re-paper.md`, currently committed in working state:
+
+1. *(working)* with `lie-sullivan-teckentrup-2017` unresolved (one cite-key missing from `refs/entries/`): build succeeds with one lint warning, clean 26-page PDF.
+2. *(crash)* add a stub `refs/entries/lie-sullivan-teckentrup-2017.yml` (any minimal valid YAML — title/year/key/type/authors), `rm -f 03-llm-hallucinate-bound/out/re-paper.*`, rebuild → fatal endlink/startlink crash on page 2.
+
+I verified the toggle multiple times. Removing the entry + cleaning `out/` → build succeeds; adding the entry back → build crashes. No source-side changes between the two states.
+
+**Root cause hypothesis.** The existing fix (`0c2a4f8`) masks the crash by switching hyperref to draft mode whenever any ref is unresolved (`@has_unresolved_refs`). With all refs resolved, draft mode disables, hyperlinks come back on, and the underlying hyperref link-nesting bug surfaces. So the previous fix is a *workaround* keyed on "any unresolved ref present"; it doesn't address the underlying interaction (super-style natbib + cleveref + page-spanning cite/cref placement) that causes the link-state crash.
+
+**Effect on this paper.** Currently working around it by keeping `lie-sullivan-teckentrup-2017` unresolved (renders as `[? lie-sullivan-teckentrup-2017]` placeholder in F.2 / Strand 2). Acceptable as a temporary content gap; not acceptable for camera-ready.
+
+**Ask.** Two paths:
+
+- *(a) Address the underlying crash* so hyperref full-link mode can stay on with all refs resolved. Likely candidates: `\hypersetup{breaklinks=true,plainpages=false}`, narrowing super-style scope (the natbib `super` option is the most plausible culprit for the link-state asymmetry), or wrapping `\citet/\citep` adjacent to page-break-prone callout environments in `\mbox{}`. Pipeline expert's call.
+- *(b) Keep draft mode for any build with super-style natbib*, regardless of resolved-ref state. Loses clickable hyperlinks at camera-ready, which would be a regression on submission quality.
+
+(a) is clearly preferable but more involved. Flagging now so it's on the radar before camera-ready.
+
+**Severity.** Blocks closing the last unresolved cite for `03-llm-hallucinate-bound`. Likely blocks the same for the other two papers as they finish their bib triage. Currently masked everywhere by the unresolved-cite fallback.
+
+**Status:** RESOLVED-IN-(commit pending). Took option (a) — addressing the underlying crash. Root cause confirmed via the agent's bisect: the `\citet` redef expanded to three separate hyperref-link calls (`\citeauthor` + `\citeyear` + `\citep`), and in paragraphs with many `\citet` calls (the §F.2 strand-2 roundup has 11 narrative cites in one paragraph), the link state could split across line/page breaks and crash the pdf backend with the nesting error.
+
+Fix: wrap the redef body in `\mbox{}` so each cite stays atomic for the link-state machinery:
+
+```
+\renewcommand{\citet}[2][]{\mbox{\citeauthor{#2}~\citeyear{#2}\citep[#1]{#2}}}
+```
+
+Verified end-to-end on the agent's exact toggle: stub `refs/entries/lie-sullivan-teckentrup-2017.yml` added → build now succeeds (was crashing); stub removed → build still succeeds via the unresolved-cite draft-mode path. All seven existing builds (00-test-paper, 01 full-paper / neurips-2026-paper, 02 full-paper / full-paper-re, 03 full-paper / re-paper) clean. Visual cite rendering unchanged ("Author Year [N]" form preserved). The `@has_unresolved_refs → draft mode` path remains as a defense-in-depth fallback for genuinely-unresolved-ref builds.

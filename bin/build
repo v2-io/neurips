@@ -582,7 +582,7 @@ class Builder
     % pdf-backend to fatal with `'endlink' ended up in different nesting
     % level than 'startlink'` — opaque error, no PDF output. Surfaced when
     % 03-llm-hallucinate-bound's reshape spine-test build crashed at page 2.
-    \\hypersetup{hidelinks,breaklinks=true}
+    \\hypersetup{hidelinks,breaklinks=true,plainpages=false,pdfpagelabels=false}
 
     % natbib-super defaults: \\NAT@open / \\NAT@close are empty (no brackets),
     % \\NAT@super@kern adds visible kerning inside what brackets do exist.
@@ -602,7 +602,16 @@ class Builder
     % Default natbib `\\citet` accepts `[postnote]{key}`; our previous redef
     % took only one arg, dropping the postnote silently and breaking 9+
     % `\\citet[Theorem N]{...}` cites in 03-llm-hallucinate.
-    \\renewcommand{\\citet}[2][]{\\citeauthor{#2}~\\citeyear{#2}\\citep[#1]{#2}}
+    %
+    % \\mbox{} wrap: keeps author+year+superscript-bracket as a single
+    % unbreakable unit. Without it, three hyperref-link calls (\\citeauthor,
+    % \\citeyear, \\citep) can split across line/page breaks; if a paragraph
+    % has many \\citet calls (e.g., 03-llm-hallucinate-bound's §F.2 strand-2
+    % roundup with 11 narrative cites in one paragraph), the link-state
+    % machinery gets confused and pdftex fatals on `'endlink' ended up in
+    % different nesting level than 'startlink'`. The \\mbox keeps each cite
+    % atomic for the link state.
+    \\renewcommand{\\citet}[2][]{\\mbox{\\citeauthor{#2}~\\citeyear{#2}\\citep[#1]{#2}}}
 
     \\bibliographystyle{unsrtnat}
 
