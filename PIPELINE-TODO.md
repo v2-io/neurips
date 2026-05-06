@@ -282,3 +282,53 @@ renders as a `\begin{tabular}{lll}…\end{tabular}` block — kramdown sees the 
   • Bug 3 (pipe-in-math table-detection) — RESOLVED-IN-`7d0c491` (same fix as flag above; `|` inside `$...$` and `$$...$$` masked to sentinel before kramdown parses).
 
 Verified: `bin/build 02-unified-convergence-rl full-paper` now succeeds end-to-end.
+
+### [01-tragedy + general] cleveref produces "Theorem N" for all lemma / definition / proposition / corollary cross-refs — flagged 2026-05-06 by 01-tragedy migration agent
+
+**Symptom.** Every `\Cref{lem-...}` / `\Cref{def-...}` / `\Cref{prop-...}` in the rendered PDF produces "Theorem N" (where N is the correctly-shared theorem counter value) instead of "Lemma N" / "Definition N" / "Proposition N". The environment's *own* header still renders correctly (`\begin{lemma}` produces "Lemma 2.1" in its body), but cross-references to it via cleveref always say "Theorem".
+
+**Quantitative scope on 01-tragedy.** In the current 24-page build: 17 instances of `Theorem 3.1` (should be `Definition 3.1`), 9 instances of `Theorem 4.2` (should be `Proposition 4.2`), 6 instances of `Theorem 2.1` (should be `Lemma 2.1`), 5 instances of `Theorem A.1` (should be `Lemma A.1`), 5 instances of `Theorem A.4` (should be `Proposition A.4`). All `\Cref` calls to non-theorem theorem-like envs are affected.
+
+**Root cause.** Standard amsthm shared-counter setup:
+
+```
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{proposition}[theorem]{Proposition}
+...
+```
+
+With `[theorem]` linkage every theorem-like environment shares the `theorem` counter. `.aux` records the label type as `theorem.N.M` (the counter name), not `lemma.N.M` / `definition.N.M`. Cleveref reads the type from `.aux` and thus calls everything "Theorem". The `\crefname{lemma}{Lemma}{Lemmas}` declarations don't help because cleveref never looks up `lemma` as the type — it sees `theorem`.
+
+`.aux` excerpt from `01-tragedy-confident-agent/out/full-paper.aux`:
+
+```
+\newlabel{lem-persistence-d}{{2.1}{3}{...}{theorem.2.1}{}}    ← lemma, but counter type theorem
+\newlabel{def-survival-margin}{{3.1}{5}{...}{theorem.3.1}{}}  ← definition, but counter type theorem
+\newlabel{prop-blank-wall}{{4.2}{8}{...}{theorem.4.2}{}}      ← proposition, but counter type theorem
+\newlabel{thm-lmi-sufficient}{{4.1}{7}{...}{theorem.4.1}{}}   ← actual theorem, type theorem (correct)
+```
+
+**Standard fix.** Use the `aliascnt` package to give each env a distinct counter name aliased to the same numeric counter:
+
+```
+\usepackage{aliascnt}
+\newaliascnt{lemma}{theorem}
+\newaliascnt{definition}{theorem}
+\newaliascnt{proposition}{theorem}
+% ... (one per env)
+\newtheorem{lemma}{Lemma}            % no [theorem] linkage; aliascnt keeps numbers shared
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+\aliascntresetthe{lemma}
+\aliascntresetthe{definition}
+\aliascntresetthe{proposition}
+% existing \crefname{...} declarations now apply correctly
+```
+
+`aliascnt` makes `\Cref{lem-foo}` see `lemma` as the type while keeping `Lemma 2.1`, `Definition 3.1`, `Theorem 4.1`, etc. in a single sequential numbering scheme as desired. This is the canonical cleveref-with-shared-counters recipe (cleveref docs §10).
+
+**Workaround on per-paper side.** Authors can write the type noun in prose around `[[#^anchor]]` to override (e.g., "Lemma [[#^lem-persistence-d]] (ii)" rendering as "Lemma Theorem 2.1 (ii)" — bad; or drop cleveref auto-name and use `\ref{}` form — would require a different source convention). Neither is good. **The pipeline-side fix is essentially mandatory** before the cross-reference apparatus is trustworthy.
+
+**Status:** OPEN
