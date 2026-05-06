@@ -583,7 +583,7 @@ I verified the toggle multiple times. Removing the entry + cleaning `out/` → b
 
 **Severity.** Blocks closing the last unresolved cite for `03-llm-hallucinate-bound`. Likely blocks the same for the other two papers as they finish their bib triage. Currently masked everywhere by the unresolved-cite fallback.
 
-**Status:** RESOLVED-IN-(commit pending). Took option (a) — addressing the underlying crash. Root cause confirmed via the agent's bisect: the `\citet` redef expanded to three separate hyperref-link calls (`\citeauthor` + `\citeyear` + `\citep`), and in paragraphs with many `\citet` calls (the §F.2 strand-2 roundup has 11 narrative cites in one paragraph), the link state could split across line/page breaks and crash the pdf backend with the nesting error.
+**Status:** RESOLVED-IN-`2a10e1b`. Took option (a) — addressing the underlying crash. Root cause confirmed via the agent's bisect: the `\citet` redef expanded to three separate hyperref-link calls (`\citeauthor` + `\citeyear` + `\citep`), and in paragraphs with many `\citet` calls (the §F.2 strand-2 roundup has 11 narrative cites in one paragraph), the link state could split across line/page breaks and crash the pdf backend with the nesting error.
 
 Fix: wrap the redef body in `\mbox{}` so each cite stays atomic for the link-state machinery:
 
