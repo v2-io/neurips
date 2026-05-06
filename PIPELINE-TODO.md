@@ -550,3 +550,12 @@ Option (a) is the cleanest. It also makes the failure mode visible in the PDF (t
 **Severity.** Blocking for incremental authoring of multi-segment papers. Affects all three papers in principle (any agent authoring §1 first with forward-refs to later sections will hit this).
 
 **Status:** OPEN
+
+**UPDATE 2026-05-06.** Initial diagnosis (`\Cref{}` to undefined label as root cause) was wrong. Two hypotheses tested and rejected:
+
+- *(a) Undefined `\citet{wu-grama-szpankowski-2024}`* — the natbib super-style + sort&compress producing a malformed `\href`-wrapped superscript was suspected. **REJECTED:** added the bibkey to `refs/entries/wu-grama-szpankowski-2024.yml` (commit umbrella, refs.bib re-emitted with 56 entries instead of 55), rebuilt, crash persisted with identical fatal message.
+- *(b) Undefined `\Cref{lem-attention-coupled}`* + other section-level forward-references — stripped all `[[#^...]]` references to undefined anchors from `src/re/01-introduction.md` (replaced with literal text e.g. "Lemma 6.2", "§3", etc.). Build log showed all undefined-reference warnings cleared. Crash persisted with identical fatal message.
+
+Joseph (pipeline expert) suggested the third hypothesis: *a hyperlink trying to span pages*. Untested from this side; pipeline expert better positioned to diagnose. The crash consistently occurs during page-1-to-page-2 transition (`[1{...pdftex.map}]` then `[2` then fatal). Some hyperref-wrapped construct opens on page 1 and isn't closed before the page break, OR opens on page 2 without a proper start.
+
+Diagnostic data preserved: `src/re/01-introduction.md` restored to canonical form with cross-refs (6 `[[#^...]]` references; 4 to undefined anchors). `OUT.re-paper.md` references `src/re/01-introduction.md` + `src/references.md`. Trigger command: `bin/build 03-llm-hallucinate-bound re-paper`. Per-paper agent stopping diagnostic from this side until pipeline fix lands.
