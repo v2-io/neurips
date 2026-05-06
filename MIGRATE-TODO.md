@@ -44,24 +44,15 @@ Each submodule needs the standard subdirs (per the original restructure-plan §3
 - [ ] **C2. Port simulation code** for B-N4 — `~/src/neurips2026/01-tragedy/sim/` → `01-tragedy-confident-agent/simulations/`.
 - [ ] **C3. Port audit relics** from each old `<paper>/_archive/` to the new submodule's `_archive/`. Use `git mv` to preserve provenance where possible (will need history-rewrite incantation since the archive is moving across repos — alternatively, just commit fresh in the new repo with a note pointing to the old SHA).
 
-## D. Doc consolidation (was PIPELINE-TODO §D1)
+## D. Doc consolidation — DONE 2026-05-05
 
-Multiple agent-facing docs at the umbrella; old workspace has more. Time-box short (Joseph's framing — "in a short time") so consolidation doesn't sprawl.
+Single canonical doc per concern at the umbrella. Resolved as:
 
-- [ ] **D1. Inventory current docs** at the umbrella (`AGENTS`, `AUTHORING`, `MIGRATE-TODO`, `PIPELINE-TODO`, `REFS-AND-CITATIONS`, `README`, `_archive/README`) plus old workspace (`STYLE`, `PRAXES`, `CLAUDE`, `HANDOFF`, `common/neurips-main-track-handbook.md`, `common/neurips-guide.md`, `common/metadata-conventions.md`).
-- [ ] **D2. Decide canonical structure** — which docs live here, which stay in old workspace as historical, what gets symlinked. Rough proposal:
-  - `AGENTS.md` — process / language / rubocop / agent-coordination patterns. Canonical here.
-  - `AUTHORING.md` — paper-segment authoring rules. Canonical here.
-  - `MIGRATE-TODO.md` — this file. Canonical here.
-  - `PIPELINE-TODO.md` — build/tooling backlog. Canonical here.
-  - `LOG.md` — append-only history. Create here, port relevant entries from old `~/src/neurips2026/LOG.md`.
-  - `PRAXES.md` — working principles. **Decide:** port (one canonical), reference (link from AGENTS), or re-derive subset for AGENTS.md.
-  - `STYLE.md` — prose-style conventions. **Decide:** content already largely folded into AUTHORING.md §2/§3; either delete or keep as a reference for things not in AUTHORING (em-dash unicode discipline, etc.).
-  - `CLAUDE.md` / `GEMINI.md` — symlinks to `AGENTS.md`.
-  - NeurIPS reference docs (`common/neurips-*.md`, `common/metadata-conventions.md`) — port to umbrella's `common/` or leave in old workspace as reference.
-- [ ] **D3. Symlink CLAUDE.md / GEMINI.md → AGENTS.md** (Joseph's earlier framing: "we'll symlink in a little bit").
-- [ ] **D4. Add LOG.md** at umbrella root for append-only project-level history.
-- [ ] **D5. Trim AGENTS.md** if appropriate after the consolidation pass — should be the minimum a fresh agent needs on cold start.
+- [x] **D1. Inventory** — completed.
+- [x] **D2. Canonical structure decided** — `AGENTS.md` (process/Ruby/rubocop) + `AUTHORING.md` (paper-segment rules + NeurIPS-rules-for-authors slice + per-paper layout + migration recipe) + `PRAXES.md` (working principles, ported from old workspace) + `MIGRATE-TODO.md` + `PIPELINE-TODO.md` + `LOG.md`. `CLAUDE.md` / `GEMINI.md` symlink to `AGENTS.md`. Old workspace's `STYLE.md` content is folded into `AUTHORING.md` §2/§3 — old file stays in old workspace as historical, no port needed. NeurIPS reference docs (`common/neurips-main-track-handbook.md`, `common/metadata-conventions.md`) stay in old workspace as authoritative source; the migration-agent-relevant slice is distilled into `AUTHORING.md` §5/§6 with link-back. Old `HANDOFF.md` is obsolete (we rebuilt the pipeline) — stays archived in old workspace.
+- [x] **D3. CLAUDE.md / GEMINI.md symlinked** to `AGENTS.md` (commit `dddd6a7`).
+- [x] **D4. LOG.md created** at umbrella root (this commit).
+- [x] **D5. AGENTS.md** kept as-is — already the minimum a fresh agent needs on cold start; further trimming deferred until concrete drift appears.
 
 ## E. Old-workspace retirement (eventually)
 
