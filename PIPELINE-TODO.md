@@ -332,3 +332,29 @@ With `[theorem]` linkage every theorem-like environment shares the `theorem` cou
 **Workaround on per-paper side.** Authors can write the type noun in prose around `[[#^anchor]]` to override (e.g., "Lemma [[#^lem-persistence-d]] (ii)" rendering as "Lemma Theorem 2.1 (ii)" — bad; or drop cleveref auto-name and use `\ref{}` form — would require a different source convention). Neither is good. **The pipeline-side fix is essentially mandatory** before the cross-reference apparatus is trustworthy.
 
 **Status:** OPEN
+
+### [03-llm-hallucinate-bound] `\cite[postnote]{key}` form breaks under super-style natbib — flagged 2026-05-06 by 03-llm-hallucinate migration agent
+
+**Symptom.** Standard natbib optional-postnote form `\cite[Theorem N]{key}` (and `\citet[...]{...}`) renders as broken text under the build's `super,sort&compress` natbib config. PDF shows: `By ? ?[?]Lemma 2.4]tsybakov-2009-nonparametric, 2 Hel² ≤ KL slice-wise.` instead of the intended `By Tsybakov³⁹, Lemma 2.4, 2 Hel² ≤ KL slice-wise.` The `[postnote]` argument leaks into the visible text, the superscript is replaced with `[?]`, and the bibkey appears as raw text.
+
+Reproduces on:
+
+- `\cite[Theorem 6.3]{kallenberg-2002-foundations}` (src/03-track1-transport.md:7)
+- `\cite[Theorem 3.4]{polyanskiy-wu-2024-info-theory}` (src/03-track1-transport.md:7)
+- `\cite[Theorem 5.4]{gray-2011-entropy}` (src/03-track1-transport.md:7)
+- `\cite[Theorem 1]{otto-villani-2000-jfa}` (src/03-track1-transport.md:15, src/B-hypothesis-verification.md:13)
+- `\citet[Theorem 2.5.3]{cover-thomas-2006-info-theory}` (src/03-track1-transport.md:24)
+- `\citet[Theorem 4.6]{stuart-2010-acta}` (src/03-track1-transport.md:91)
+- `\cite[Theorem 5.1]{ay-2017-information}` (src/05-track2-fisher-rao.md:27)
+- `\citet[Theorem 5.1]{ay-2017-information}` (src/05-track2-fisher-rao.md:33)
+- `\citet[Lemma 2.4]{tsybakov-2009-nonparametric}` (src/05-track2-fisher-rao.md:77, src/05-track2-fisher-rao.md:94)
+
+`\citealt[Lemma 2.4]{tsybakov-2009-nonparametric}` (without `t`) appears to render correctly — page 16 line 657 shows `Tsybakov³⁹, Lemma 2.4` properly. So the bug is specific to `\cite[opt]{key}` and `\citet[opt]{key}` under super-style.
+
+**Context.** `\cite[postnote]{key}` is canonical natbib syntax (natbib reference manual §2.5.4), supported across all citation styles in standard natbib config. The `super,sort&compress` mode's bracket-replacement may be intercepting the `[opt]` argument and concatenating it into the text-mode output rather than passing it through to the bibtex-rendered citation tail.
+
+**Workaround applied.** None at source level — the `\cite[opt]{key}` syntax is correct LaTeX; this is a pipeline-side issue. Per-paper agent could rewrite as `\cite{key}` followed by ", Theorem N" in prose if the bug isn't fixed before submission. Alternative: switch all `\cite[opt]{key}` to `\citealt[opt]{key}` form, which appears to work correctly under super-style.
+
+**Ask.** Inspect bin/build's natbib config (`super,sort&compress`); the natbib `super` style may need a `\bibpunct` tweak or the `\cite` redefinition may be eating the optional argument. Standard natbib should pass `[Theorem N]` through to the bibtex-rendered citation as a tail postnote (rendered as ⁽¹⁰,Thm.6.3⁾ or similar in super-style). The current behavior — leaking the optional argument into text-mode output — looks like a `\cite` redefinition bug rather than a natbib option issue.
+
+**Status:** OPEN
