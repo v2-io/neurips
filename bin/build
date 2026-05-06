@@ -208,6 +208,15 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
 
   def convert_codespan(el, _opts) = "\\texttt{#{codespan_escape(el.value)}}"
 
+  # Kramdown auto-wraps standalone-image paragraphs in `\begin{figure}\begin
+  # {center}...\caption{alt}\end{center}\end{figure}`. Our `[!figure]` callout
+  # is the canonical figure wrapper (carries the caption / label / centering),
+  # so we suppress the auto-wrap and just emit the \includegraphics — let the
+  # callout do the figure shaping. Bare `![alt](path)` outside a `[!figure]`
+  # callout therefore renders as a plain inclusion; authors wanting a numbered
+  # figure use the callout form per AUTHORING §1.5.
+  def convert_standalone_image(_el, _opts, img) = img
+
   # Paragraph-leading bold-then-period — the academic-prose `**Two regimes.**
   # body...` shape — auto-converts to `\paragraph{Two regimes} body...` per
   # AUTHORING.md §1.9. Detection: rendered paragraph that starts with
