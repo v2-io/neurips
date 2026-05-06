@@ -1,0 +1,156 @@
+#!/usr/bin/env ruby
+#
+# bin/page-budget — main-text page count vs NeurIPS 9-page limit.
+#
+# NeurIPS 2026 caps the main content at 9 pages. References, appendices,
+# and the Paper Checklist are unbudgeted and follow after. This script
+# parses each paper's `<paper-dir>/out/<manifest>.aux` (LaTeX writes the
+# final paginated location of every \section / \appendix / \label there)
+# and reports:
+#
+#   - the page main text ends on (one before the first appendix/references)
+#   - overage vs the 9-page limit
+#   - per-section breakdown for trim planning
+#
+# Usage:
+#   bin/page-budget                                # all 0?-* paper dirs
+#   bin/page-budget 02-unified-convergence-rl      # one paper
+#   bin/page-budget --manifest full-paper          # different manifest stem
+#
+# Run after `bin/build <paper> <manifest>` — the .aux file is the input.
+# Exits 0 always; this is a status reporter, not a CI gate.
+#
+# Design note. The earlier project (~/src/neurips2026/bin/page-budget) parsed
+# `\newlabel` entries; this version uses `\@writefile{toc}{\contentsline ...}`
+# instead because TOC entries already classify section vs appendix vs paragraph
+# explicitly via their reference-target suffix (`section.N`, `appendix.A`,
+# `section*.N` for unnumbered headings) — fewer heuristics, more direct.
+
+require "pathname"
+require "optparse"
+
+ROOT  = Pathname.new(__dir__).parent.expand_path
+LIMIT = 9
+
+# `\contentsline {KIND}{INNER}{PAGE}{REF}\protected@file@percent }` — the
+# inner can contain nested braces from `\numberline {N}`, so we anchor on the
+# `\protected@file@percent` suffix and work back to find the trailing
+# `{PAGE}{REF}` groups. Treats KIND, INNER as the prefix.
+TOC_LINE_RE = /
+  \\contentsline\s*
+  \{(?<kind>\w+)\}
+  \{(?<inner>.*)\}
+  \{(?<page>\d+)\}
+  \{(?<ref>[^}]+)\}
+  \\protected@file@percent
+/x.freeze
+
+TocEntry = Struct.new(:kind, :inner, :page, :ref, keyword_init: true) do
+  def appendix?    = ref.start_with?("appendix.")
+  def references?  = inner.include?("References") && !inner.include?("References to") # crude — handles `References` heading vs prose
+  def section?     = kind == "section"
+  def title
+    # Strip leading `\numberline {N}` to get the human-readable title.
+    inner.sub(/\A\\numberline\s*\{[^}]+\}\s*/, "")
+  end
+
+  def number
+    if (m = inner.match(/\A\\numberline\s*\{([^}]+)\}/))
+      m[1]
+    else
+      ""
+    end
+  end
+end
+
+def parse_aux(aux_path)
+  entries = []
+  aux_path.each_line do |line|
+    next unless line.include?("\\contentsline")
+    next unless (m = line.match(TOC_LINE_RE))
+
+    entries << TocEntry.new(kind: m[:kind], inner: m[:inner], page: m[:page].to_i, ref: m[:ref])
+  end
+  entries
+end
+
+# Find the page on which main text ends. Returns [end_page, marker_kind] where
+# marker_kind is "appendix" or "references" — whichever transition came first.
+# Returns nil if the paper has neither marker (still drafting).
+def main_text_end(entries)
+  appendix_pages   = entries.select(&:appendix?).map(&:page)
+  references_pages = entries.select(&:references?).map(&:page)
+  candidates       = []
+  candidates << [appendix_pages.min,   "appendix"]   unless appendix_pages.empty?
+  candidates << [references_pages.min, "references"] unless references_pages.empty?
+  return nil if candidates.empty?
+
+  page, kind = candidates.min_by(&:first)
+  [page - 1, kind]
+end
+
+def report(paper_dir, manifest)
+  rel = paper_dir.relative_path_from(ROOT)
+  aux = paper_dir / "out" / "#{manifest}.aux"
+  unless aux.exist?
+    puts "  #{rel}: #{manifest}.aux not found — run `bin/build #{rel} #{manifest}` first"
+    return
+  end
+
+  entries = parse_aux(aux)
+  result  = main_text_end(entries)
+  unless result
+    puts "  #{rel}/#{manifest}: no appendix or references markers in aux (still drafting?)"
+    return
+  end
+
+  end_page, marker = result
+  overage = end_page - LIMIT
+  status  = overage > 0 ? "OVER" : "OK"
+  sign    = overage > 0 ? "+" : ""
+
+  puts "  #{rel}/#{manifest}: #{end_page}pp main-text  [#{status}: #{sign}#{overage} vs #{LIMIT}-pp]  (#{marker} starts p#{end_page + 1})"
+
+  # Section progression — main + appendix sections in source order.
+  sections = entries.select(&:section?)
+  return if sections.empty?
+
+  puts "    section progression:"
+  sections.each do |s|
+    classification = s.appendix? ? "appx" : "main"
+    title          = s.title
+    title          = "#{title[0, 57]}..." if title.length > 60
+    puts "      §#{s.number.to_s.rjust(3)}  starts p#{s.page.to_s.rjust(3)}  #{classification}  #{title}"
+  end
+end
+
+def main
+  manifest = "neurips-2026-paper"
+  OptionParser.new do |o|
+    o.banner = <<~USAGE
+      usage: bin/page-budget [<paper-dir>...] [--manifest STEM]
+
+      Reports main-text page count vs NeurIPS #{LIMIT}-pp limit using each
+      paper's <paper-dir>/out/<manifest>.aux. Run `bin/build` first.
+    USAGE
+    o.on("--manifest STEM", "manifest stem (default: neurips-2026-paper)") { |s| manifest = s }
+  end.parse!
+
+  targets = ARGV.empty? ? Dir.glob("#{ROOT}/0?-*").sort.select { |d| File.directory?(d) } : ARGV
+
+  puts "# Main-text page budget vs NeurIPS #{LIMIT}-page limit (manifest: #{manifest})"
+  puts
+
+  targets.each do |t|
+    p = Pathname.new(t).expand_path
+    p = ROOT / t unless p.directory?
+    unless p.directory?
+      puts "  #{t}: not a directory"
+      next
+    end
+    report(p, manifest)
+    puts
+  end
+end
+
+main if $PROGRAM_NAME == __FILE__

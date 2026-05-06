@@ -56,7 +56,7 @@ These existed in the old workspace as separate scripts; some may be subsumed by 
 
 - [ ] **E2. Pre-flight check** (old `bin/preflight`). Consolidated submission-readiness bundle: anonymization + page-count + cite-coverage + compile health across all three papers in one pass.
 
-- [ ] **E3. Page-budget tool** (old `bin/page-budget`). Main-text page count vs 9-pp limit, with per-section breakdown from `paper.aux`. Critical during trim work.
+- [x] **E3. Page-budget tool** — `bin/page-budget` (Ruby port of old workspace's `bin/page-budget`). Parses `<paper-dir>/out/<manifest>.aux` for `\@writefile{toc}{\contentsline ...}` entries; finds first appendix/references marker; reports main-text page count vs 9-pp limit + per-section progression. Done — usage: `bin/page-budget [<paper-dir>...] [--manifest STEM]`. Default manifest is `neurips-2026-paper`. Critical during trim work; per-paper agents can run repeatedly after each cut to track progress.
 
 - [ ] **E4. Supplementary-ZIP builder** (old `bin/build-supplementary`). Per-paper ZIP < 100 MB for OpenReview supplementary upload (figures, code, raw-data, extended appendices not in the 9-pp main).
 
