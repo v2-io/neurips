@@ -75,18 +75,43 @@ def parse_aux(aux_path)
 end
 
 # Find the page on which main text ends. Returns [end_page, marker_kind] where
-# marker_kind is "appendix" or "references" — whichever transition came first.
-# Returns nil if the paper has neither marker (still drafting).
-def main_text_end(entries)
+# marker_kind is "appendix" / "references" / "last-section-fallback".
+# Returns nil only if the paper has no TOC entries at all (still drafting).
+#
+# Three-tier detection. Tier 1 + 2 are explicit transition markers; tier 3
+# is a fallback for manifests where `\bibliography{refs}` doesn't emit a
+# TOC entry (e.g., under hyperref draft mode or some natbib styles), in
+# which case we estimate main-text-end as the page where the last numbered
+# `\section{}` begins.
+def main_text_end(entries, aux_total_pages)
   appendix_pages   = entries.select(&:appendix?).map(&:page)
   references_pages = entries.select(&:references?).map(&:page)
   candidates       = []
   candidates << [appendix_pages.min,   "appendix"]   unless appendix_pages.empty?
   candidates << [references_pages.min, "references"] unless references_pages.empty?
-  return nil if candidates.empty?
 
-  page, kind = candidates.min_by(&:first)
-  [page - 1, kind]
+  if candidates.any?
+    page, kind = candidates.min_by(&:first)
+    return [page - 1, kind]
+  end
+
+  # Tier 3: no explicit markers. If we have at least one main-text section,
+  # estimate main-text-end as the larger of (last section's start page) and
+  # (total pages - 2) — bibliographies typically take 1-2 pages. Returns
+  # marker_kind = "last-section-fallback" so the report flags the estimate.
+  main_sections = entries.select { |e| e.section? && !e.appendix? }
+  return nil if main_sections.empty?
+
+  last_section_page = main_sections.map(&:page).max
+  fallback_end      = [last_section_page, aux_total_pages.to_i - 2].max
+  [fallback_end, "last-section-fallback"]
+end
+
+# Total page count from the .aux: we look for the highest page number in any
+# TOC entry. This isn't authoritative (the document may extend past the last
+# TOC entry into bibliography), but it bounds the main-text estimate from below.
+def aux_total_pages(entries)
+  entries.map(&:page).max || 0
 end
 
 def report(paper_dir, manifest)
@@ -98,7 +123,7 @@ def report(paper_dir, manifest)
   end
 
   entries = parse_aux(aux)
-  result  = main_text_end(entries)
+  result  = main_text_end(entries, aux_total_pages(entries))
   unless result
     puts "  #{rel}/#{manifest}: no appendix or references markers in aux (still drafting?)"
     return
