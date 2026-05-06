@@ -451,3 +451,38 @@ Secondary observation worth noting: the rendered postnote position is `[N] postn
 **Ask.** Pipeline-side, the kramdown escape pass should leave `~` and `\&` untouched inside the bracketed argument of `\cite` / `\citet` / `\citep` / `\citealp` (treat the postnote as raw-TeX passthrough, since the entire `\cite{}` form already is). Detection: after a `\cite[tp]?\b` token, the immediately-following `[...]` argument is part of the cite — treat its contents as raw TeX. Once landed, the per-paper sources can revert to standard `~` / `\&` in postnotes.
 
 **Status:** RESOLVED-IN-(commit pending). Pre-mask/post-restore approach modeled on `mask_math_pipes`: each `\cite\w*\[postnote\]` expression has its bracketed content stashed in a per-build array and replaced with a sentinel-bracketed index `\<S>N<S>`. After kramdown parses and the LaTeX converter renders, `unmask_cite_postnotes` walks the output and substitutes the original verbatim postnote back. The `\cite{key}` form was already raw-TeX passthrough policy (AUTHORING §4); the postnote bracket is a natural extension of that scope. Verified end-to-end on `00-test-paper`: `\cite[ch.~4 \& 9]{boyd-1994-lmi}` round-trips with `~` and `\&` intact, lualatex compile clean. Per-paper sources can revert their `~`→space and `\&`→" and " workarounds. The cosmetic `[N] postnote` vs conventional `[N, postnote]` rendering position is a separate natbib-super-vs-`\citet`-redef interaction; defer.
+
+### [01-tragedy + general] U+2261 `≡` (IDENTICAL TO) missing-glyph in TeX Gyre Termes text mode — flagged 2026-05-06 by 01-tragedy migration agent
+
+**Symptom.** Unicode math operator `≡` (U+2261) used in prose (outside `$..$` math mode) renders as the Unicode replacement glyph (visible as a small box / ?-in-square in the rendered PDF). E.g. "with LMI ≡ greedy at low drift" → `with LMI � greedy at low drift` in the PDF. Lualatex emits a "Missing character: There is no ≡ (U+2261) in font" warning during compile.
+
+**Context.** Reproduced in `01-tragedy-confident-agent/src/01-introduction.md` (Contributions paragraph). AUTHORING §2.8 promises "lualatex handles `Łojasiewicz`, `Bretagnolle–Huber`, `Čencov`, `Grönwall`, `Otto–Villani` directly. No `\'e` / `\"o` / `\v{c}` workarounds." That generalization holds for accented letters but breaks on Unicode *math operators* (`≡`, `∇`, `∑` etc.) when used outside math mode — TeX Gyre Termes lacks the math-operator glyphs.
+
+**Workaround applied.** Wrap math operators in inline math: `LMI ≡ greedy` → `LMI $\equiv$ greedy`. Renders correctly. Applied at the one site in 01-tragedy.
+
+**Ask.** Either (a) extend AUTHORING §2.8 to clarify that Unicode math operators outside `$..$` need wrapping (cheap, source-side discipline); or (b) load a math-operator-bearing fallback font in the build's preamble so bare `≡` works in prose (heavier, but matches the §2.8 promise). The (a) path is probably cleaner — separating "letters render directly" from "math operators need math mode" is easy authoring discipline once stated.
+
+**Status:** OPEN
+
+### Post-revert verification (2026-05-06, 03-llm-hallucinate-bound migration agent)
+
+Reverted all my source-side workarounds back to AUTHORING-canonical / source-original form (commit `6ad49aa` in submodule). Build is still clean. Inventory of which previously-flagged inbox items now appear resolved vs still active in the rendered PDF — for the pipeline owner to confirm and close as appropriate:
+
+**Now appearing resolved in PDF (build-pipeline owner: please verify and update `Status:` if confirmed):**
+
+- `\cite[postnote]{key}` form — `\cite[Theorem 6.3]{kallenberg-2002-foundations}` etc. now renders correctly under super-style natbib as `[34] Theorem 6.3`. Reverted my `\citealt[opt]` workaround back to `\cite[opt]`; output reads cleanly. Verified across §3 (Stuart, Kallenberg, Polyanskiy-Wu, Cover-Thomas, Otto-Villani) and §5 (Tsybakov Lemma 2.4, Ay-Jost-Lê-Schwachhöfer).
+- `[!table]` callout column-sizing — 4-column Class-partition table at §2.2 (page 5) renders with all four columns visible and text-wrapped. `[!table] cols="l X X X"` attribute used per pipeline-owner inbox note (umbrella commit `d4218a8`). Standard `[!table]` callout (no `cols=`) on Appendix C numerical-comparison table also renders correctly (page 35) — the cols attribute is opt-in, default keeps working for narrower tables.
+- Kramdown bare-`|` table heuristic in inline math — reverted my `\mid`/`\Vert`/`\lvert`/`\rvert` source workarounds back to bare `|` / `\|` / `|...|` matching original source notation. Build no longer fails. The §2.1 paragraph that originally triggered this (`P_{M_{\tau^+}|e, M}` with multiple `\|...\|` in same paragraph) now compiles cleanly. Either the pipeline fix landed or my paragraph happened to not trigger the heuristic in current state — pipeline owner has the diagnostic.
+
+**Still active in PDF after revert:**
+
+- Smart-quote conversion fails against inline-math `$` (line 399 above). Visible at e.g. page 35 line 1543 in the §C numerical-comparison appendix: `the naive "σ_post√2I" reading is wrong` renders with straight ASCII `"`, not smart-quoted. ~22 instances across §2 / §5 / §6 / §A / §C / §D.
+- Markdown ordered list restarts at "1." after intervening display equation (line 411 above). Visible at page 22 (§6.4 H_kappa Conditions 1+2) and page 33 (§B.3, same conditions reproduced). Both items render as "1." instead of "1." then "2.".
+
+**Not pipeline issues (reclassified, not flagging):**
+
+- `\sqrt{\,\cdot\,}` rendering — the cdot inside the radical is small enough to look empty/floating against the radical bar. This is canonical LaTeX (square-root-of-placeholder); the visual quirk is just cdot size in the NeurIPS template font. Per-paper-agent stylistic call (rephrase to "Jensen's inequality:" or "Jensen on $\sqrt{x}$:"); not a pipeline bug.
+- 4 missing bibkeys (lie-sullivan-teckentrup-2017, parr-dacosta-friston-2019, su-kempe-ullrich-2024, wu-grama-szpankowski-2024) render as `[?]` superscripts. Content-side gap (`bin/refs add` task for per-paper agent), not pipeline.
+- Multi-cite at page 27 line 1192 renders oddly because of the missing `wu-grama-szpankowski-2024` key disrupting sort&compress. Resolves when bib entry lands.
+
+**Net post-revert state:** 2 active pipeline bugs visible (smart-quote, list-renumber) + 1 content-side bibkey gap. Source files now in AUTHORING-canonical form across all segments.
