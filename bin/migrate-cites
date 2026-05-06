@@ -1,0 +1,265 @@
+#!/usr/bin/env ruby
+#
+# bin/migrate-cites — sweep [Author Year] / Author [Year] cite patterns in
+# segment source files and propose \cite{key} / \citet{key} replacements
+# via the refs/entries/ bib database.
+#
+# Usage:
+#   bin/migrate-cites <paper-dir>            # dry-run; print summary + diff
+#   bin/migrate-cites <paper-dir> --apply    # rewrite files in place
+#   bin/migrate-cites <paper-dir> --quiet    # suppress per-match listing
+#
+# Targets:  <paper-dir>/src/**/*.md
+#
+# Patterns recognized (per AUTHORING.md §2.3 source convention pre-migration):
+#   [Anderson 1985]                          → \cite{anderson-1985-...}
+#   [Auer et al. 2002]                       → \cite{auer-cesa-bianchi-...}
+#   [Bareinboim-Correa-Ibeling-Icard 2022]   → \cite{bareinboim-...}
+#   Anderson [1985]                          → \citet{anderson-1985-...}
+#   Auer et al. [2002]                       → \citet{auer-cesa-...}
+#   [A Year; B Year]                         → \cite{a-key,b-key}
+#   [Author Year, p. 247]                    → \cite[p.~247]{author-year-...}
+#
+# Match logic: first-author-surname + year (case-insensitive). Single match →
+# replacement suggested. Multiple matches → flagged ambiguous (human picks).
+# No match → flagged missing (run `bin/refs add` first).
+#
+# Multi-year cites like `[Friston 2013, 2019]` and tricky multi-cite forms with
+# mixed structure are flagged for human review rather than auto-rewritten —
+# the time-saver is the bulk-simple cases; complex forms benefit from a careful
+# human pass.
+
+require "yaml"
+require "optparse"
+
+ROOT     = Pathname.new(__dir__).parent.expand_path
+REFS_DIR = ROOT / "refs" / "entries"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Bib index
+# ─────────────────────────────────────────────────────────────────────────────
+
+def extract_surname(author_str)
+  return nil unless author_str
+
+  # Strip BibTeX brace-protection: "{El Ghaoui}" → "El Ghaoui"
+  cleaned = author_str.gsub(/[{}]/, "").strip
+  cleaned.split(",").first&.strip
+end
+
+def load_index
+  entries = REFS_DIR.glob("*.yml").map do |path|
+    e = YAML.safe_load_file(path, permitted_classes: [Date])
+    next nil unless e["key"] && e["authors"]&.first
+
+    {
+      key:           e["key"],
+      year:          e["year"].to_s.gsub(/\D/, ""),
+      first_surname: extract_surname(e["authors"].first)
+    }
+  end
+  entries.compact
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Cite parsing
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Parenthetical cite: [Author Year], [Author et al. Year], [A-B-C Year], with
+# optional `, p. N` or `, ch. N` page/chapter trailer.
+PARENTHETICAL_RE = /
+  \[
+  (?<authors>[A-ZÉÊČŁŐÖÜÅÆØÇ][A-Za-zÀ-ÿ\-']+(?:-[A-ZÉÊČŁŐÖÜÅÆØÇ][A-Za-zÀ-ÿ\-']+)*(?:\s+et\s+al\.?)?)
+  \s+
+  (?<year>\d{4}[a-z]?)
+  (?<trailer>(?:,\s*(?:p|pp|ch|sec|§)\.?~?\s*[\d.\-–]+)?)
+  \]
+/x
+
+# Narrative cite: Author [Year], Auer et al. [2002], Bareinboim-Correa [2022]
+NARRATIVE_RE = /
+  (?<![\\\w\[])
+  (?<authors>[A-ZÉÊČŁŐÖÜÅÆØÇ][A-Za-zÀ-ÿ\-']+(?:-[A-ZÉÊČŁŐÖÜÅÆØÇ][A-Za-zÀ-ÿ\-']+)*(?:\s+et\s+al\.?)?)
+  \s+
+  \[
+  (?<year>\d{4}[a-z]?)
+  \]
+/x
+
+# Multi-cite separator inside brackets: [A Year; B Year]
+MULTICITE_SPLIT = /\s*;\s*/
+
+# Multi-year for same author: [Friston 2013, 2019] (year-comma-year)
+MULTIYEAR_RE = /\A(\d{4}[a-z]?)(?:\s*,\s*(\d{4}[a-z]?))+\z/
+
+def first_surname_from_cite(authors_str)
+  # "Bareinboim-Correa-Ibeling-Icard" → "Bareinboim"
+  # "Auer et al." → "Auer"
+  # "Anderson"  → "Anderson"
+  cleaned = authors_str.sub(/\s+et\s+al\.?\s*\z/, "")
+  cleaned.split("-").first&.strip
+end
+
+def match(authors, year, index)
+  surname = first_surname_from_cite(authors)
+  return [] unless surname
+
+  index.select do |e|
+    e[:first_surname]&.casecmp?(surname) && e[:year] == year.to_s
+  end
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Replacement assembly
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Build the LaTeX form for a single matched cite.
+# kind: :parenthetical → \cite{key},  :narrative → \citet{key}
+def render_one(kind, key, trailer)
+  cmd = kind == :narrative ? "citet" : "cite"
+  if trailer && !trailer.empty?
+    page = trailer.sub(/\A,\s*/, "").tr('~', " ").strip
+    "\\#{cmd}[#{page}]{#{key}}"
+  else
+    "\\#{cmd}{#{key}}"
+  end
+end
+
+def render_multi(kind, keys)
+  cmd = kind == :narrative ? "citet" : "cite"
+  "\\#{cmd}{#{keys.join(',')}}"
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# File processing
+# ─────────────────────────────────────────────────────────────────────────────
+
+CiteFinding = Struct.new(:file, :raw, :kind, :authors, :year, :trailer, :status, :replacement, :candidates, keyword_init: true)
+
+def process_file(path, index)
+  text     = path.read
+  findings = []
+
+  # Parenthetical pass first (rewrites first), then narrative.
+  text.scan(PARENTHETICAL_RE) do
+    m = Regexp.last_match
+    findings << analyze(:parenthetical, m, index)
+  end
+
+  text.scan(NARRATIVE_RE) do
+    m = Regexp.last_match
+    findings << analyze(:narrative, m, index)
+  end
+
+  findings
+end
+
+def analyze(kind, match_data, index)
+  raw      = match_data[0]
+  authors  = match_data[:authors]
+  year     = match_data[:year]
+  trailer  = (kind == :parenthetical ? match_data[:trailer] : nil)
+
+  candidates = match(authors, year, index)
+
+  status, replacement =
+    case candidates.size
+    when 0 then [:missing,   nil]
+    when 1 then [:matched,   render_one(kind, candidates.first[:key], trailer)]
+    else        [:ambiguous, nil]
+    end
+
+  CiteFinding.new(
+    file:        nil,
+    raw:         raw,
+    kind:        kind,
+    authors:     authors,
+    year:        year,
+    trailer:     trailer,
+    status:      status,
+    replacement: replacement,
+    candidates:  candidates
+  )
+end
+
+def apply_replacements(path, findings)
+  text     = path.read
+  matched  = findings.select { |f| f.status == :matched }
+  return 0 if matched.empty?
+
+  # Replace longest-raw first to avoid partial-overlap clobbering.
+  matched.sort_by { |f| -f.raw.length }.each do |f|
+    text = text.gsub(f.raw, f.replacement)
+  end
+  path.write(text)
+  matched.size
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLI
+# ─────────────────────────────────────────────────────────────────────────────
+
+def main
+  apply = false
+  quiet = false
+  OptionParser.new do |o|
+    o.banner = "usage: bin/migrate-cites <paper-dir> [--apply] [--quiet]"
+    o.on("--apply") { apply = true }
+    o.on("--quiet") { quiet = true }
+  end.parse!
+
+  paper_dir = ARGV.shift
+  abort("usage: bin/migrate-cites <paper-dir> [--apply] [--quiet]") unless paper_dir
+
+  src_dir = ROOT / paper_dir / "src"
+  abort("not found: #{src_dir}") unless src_dir.directory?
+
+  index = load_index
+  warn "Loaded #{index.size} bib entries from refs/entries/"
+
+  totals            = Hash.new(0)
+  per_file_findings = {}
+
+  src_dir.glob("**/*.md").sort.each do |path|
+    findings = process_file(path, index)
+    findings.each { |f| f.file = path.relative_path_from(ROOT) }
+    next if findings.empty?
+
+    per_file_findings[path] = findings
+    findings.each { |f| totals[f.status] += 1 }
+  end
+
+  print_report(per_file_findings, totals, quiet: quiet)
+
+  return unless apply
+
+  warn "\n── applying ──"
+  changed = 0
+  per_file_findings.each { |path, findings| changed += apply_replacements(path, findings) }
+  warn "Rewrote #{changed} cite occurrence(s) across #{per_file_findings.size} file(s)."
+  warn "Ambiguous and missing cites were left untouched — handle by hand or `bin/refs add`."
+end
+
+def print_report(per_file_findings, totals, quiet:)
+  warn "── Summary ──"
+  warn "  matched:    #{totals[:matched]}    (will rewrite under --apply)"
+  warn "  ambiguous:  #{totals[:ambiguous]}  (multiple candidates — needs human pick)"
+  warn "  missing:    #{totals[:missing]}    (no bib entry — `bin/refs add` first)"
+
+  return if quiet
+
+  per_file_findings.each do |path, findings|
+    warn "\n── #{path.relative_path_from(ROOT)} ──"
+    findings.each do |f|
+      case f.status
+      when :matched then warn "  ✓  #{f.raw}  →  #{f.replacement}"
+      when :ambiguous
+        warn "  ?  #{f.raw}  →  AMBIGUOUS (#{f.candidates.size} candidates):"
+        f.candidates.each { |c| warn "       #{c[:key]}" }
+      when :missing then warn "  ✗  #{f.raw}  →  NO MATCH (#{f.kind})"
+      end
+    end
+  end
+end
+
+main if $PROGRAM_NAME == __FILE__
