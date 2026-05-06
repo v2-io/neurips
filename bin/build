@@ -703,6 +703,8 @@ class Builder
   # become private without `private_constant`; this constant is mid-class for
   # locality with the methods that use it, not a privacy declaration.
   MATH_PIPE_SENTINEL = "\x01".freeze
+  CITE_ARG_OPEN      = "\x02".freeze
+  CITE_ARG_CLOSE     = "\x03".freeze
   # rubocop:enable Lint/UselessConstantScoping
 
   def render_segment(row)
@@ -715,11 +717,13 @@ class Builder
       "#{content}\n"
     else
       content = mask_math_pipes(content)
+      content = mask_cite_postnotes(content)
       doc     = Kramdown::Document.new(content, input: "NeurIPS")
       attach_equation_anchors!(doc.root)
       out, warnings = doc.to_neurips
       warnings.each { |w| @lint_findings << "#{row.path}: #{w}" }
-      out.tr(MATH_PIPE_SENTINEL, "|")
+      out = out.tr(MATH_PIPE_SENTINEL, "|")
+      unmask_cite_postnotes(out)
     end
   end
 
@@ -736,6 +740,41 @@ class Builder
     # Inline math ($...$, single-dollar, lookarounds skip $$ pairs).
     text.gsub(/(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/) do
       "$#{Regexp.last_match(1).tr('|', MATH_PIPE_SENTINEL)}$"
+    end
+  end
+
+  # Mask the bracketed postnote of `\cite[postnote]{key}` (and the citet /
+  # citep / citealt / citealp / citeauthor / citeyear variants) so kramdown's
+  # text-handling and our ESCAPE_MAP don't mangle LaTeX-meaningful characters
+  # inside it. Authors write `\cite[ch.~4 \& 9]{key}` with `~` (non-breaking
+  # space) and `\&` (escaped ampersand) per natbib convention; without
+  # masking, ESCAPE_MAP turns `~` into `\textasciitilde{}` and `&` into `\&`
+  # (yielding `\\&` for the already-escaped author form), which breaks
+  # lualatex with "Misplaced alignment tab character &". Replace each
+  # bracketed postnote with `\<S>N<S>` where N indexes into @cite_postnote_stash;
+  # restore in unmask_cite_postnotes after kramdown + the LaTeX converter
+  # finish. The whole `\cite{key}` form is already raw-TeX passthrough policy
+  # (AUTHORING §4); the postnote bracket is a natural extension of that
+  # passthrough scope.
+  CITE_PREFIX_RE = /\\cite(?:t|p|alt|alp|author|year)?[*]?/.freeze
+  CITE_ARG_RE    = /(#{CITE_PREFIX_RE})\[([^\]\n]*)\]/.freeze
+
+  def mask_cite_postnotes(text)
+    @cite_postnote_stash ||= []
+    text.gsub(CITE_ARG_RE) do
+      cmd  = Regexp.last_match(1)
+      note = Regexp.last_match(2)
+      idx  = @cite_postnote_stash.length
+      @cite_postnote_stash << note
+      "#{cmd}[#{CITE_ARG_OPEN}#{idx}#{CITE_ARG_CLOSE}]"
+    end
+  end
+
+  def unmask_cite_postnotes(tex)
+    return tex unless @cite_postnote_stash
+
+    tex.gsub(/#{Regexp.escape(CITE_ARG_OPEN)}(\d+)#{Regexp.escape(CITE_ARG_CLOSE)}/) do
+      @cite_postnote_stash[Regexp.last_match(1).to_i] || ""
     end
   end
 
