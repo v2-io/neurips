@@ -169,17 +169,25 @@ For a specific phrasing (e.g., "see Theorem 1.1's proof in Appendix A"), write t
 
 ### 2.3 Inline citations
 
-`[Author Year]` and `Author [Year]` patterns; multi-cite via `;`:
+`\cite{key}` for default attribution; `\citet{key}` when the cited author is the sentence subject. Multi-cite via comma in the key list:
 
 ```
-the bursting result of [Anderson 1985]
-Anderson [1985] established bursting
-multi-cite: [Anderson 1985; Bar-Shalom 1981; Mesbah 2017]
+the bursting result of \cite{anderson-1985-bursting}
+\citet{anderson-1985-bursting} established bursting
+multi-cite: \cite{anderson-1985-bursting,bar-shalom-1981,mesbah-2017}
 ```
 
-Build substitutes to `\citep{...}` / `\citet{...}` / `\citep{a,b,c}` at compile time, sourcing keys from the paper's `refs.bib`.
+Rendered (bracketed-superscript per `REFS-AND-CITATIONS.md`):
 
-*Open (#11 in the rule discussion):* whether this is the right form going forward, or whether we should use a more structured key form (e.g., `[@anderson-1985]` Pandoc-style). Convention TBD; keep `[Author Year]` for now.
+- `\cite{...}` / `\citep{...}` → `⁽¹⁰⁾` — compact attribution at end of clause.
+- `\citet{...}` → `Anderson 1985⁽¹⁰⁾` — narrative, when the author is the sentence subject.
+- Multi-cite via `sort&compress` collapses runs: `\cite{a,b,c}` where keys hash to 1, 2, 3 → `⁽¹⁻³⁾`.
+
+`key` is the BibTeX entry key in the paper's `refs.bib`. Bib keys are canonical — no same-year ambiguity (the Hintikka-1991 problem disappears), no multi-author truncation question. Editor / IDE completion makes lookup ergonomic; the cognitive shape matches our other key-form anchors (`[[#^thm-main]]`).
+
+Raw `\cite{}` passes through the converter unchanged (raw-TeX passthrough policy); the build's natbib config drives the rendering. Switching from numeric to author-year or back is a one-line config change with no author-side impact.
+
+The legacy `[Author Year]` source convention from the prior workspace is deprecated. Existing segments will be migrated via `bin/migrate-cites` (see `PIPELINE-TODO.md` §C1).
 
 ### 2.4 Footnotes
 
@@ -270,12 +278,13 @@ Last-resort escape: `{::nomarkdown} ... {:/nomarkdown}` blocks pass through verb
 
 These are flagged in line above and consolidated here:
 
-- **#6** — Display-math syntax. Current `$$ ... $$` with `aligned` for multi-line is good enough; may revisit if a cleaner convention emerges (Joseph's read: "seems like there are better / more standard ways to do this than inline latex, but it might be fine for now").
+- **#6** — Display-math syntax. Current `$$ ... $$` with `aligned` for multi-line is good enough; may revisit if a cleaner convention emerges.
 - **#10** — Footnotes. First-use convention not yet picked.
-- **#11** — Inline citations. Whether `[Author Year]` is the right form long-term, or whether to switch to a more structured key form.
-- **#12** — References section. Phase B switch from manual list to natbib + `refs.bib`.
+- **#12** — References section. Phase B switch from manual list to natbib + `refs.bib` (paired with the §2.3 source-form migration).
 
-We'll work these out as the per-paper segmentation work surfaces concrete cases.
+(#11 — Inline citations — resolved 2026-05-05; see §2.3 above and `REFS-AND-CITATIONS.md`.)
+
+We'll work the rest out as the per-paper segmentation work surfaces concrete cases.
 
 ---
 

@@ -38,7 +38,14 @@ The build pipeline's lint pass should warn on (or convert / strip) authoring pat
 
 ## C. Phase B converter work
 
-- [ ] **C1. Inline citation substitution** — `[Author Year]` → `\citep{key}`, `Author [Year]` → `\citet{key}`, multi-cite `[A Year; B Year]` → `\citep{a-key,b-key}`. Source the keys from each paper's `refs.bib` via fuzzy author-year matching (re-implement old workspace's `bin/refs-to-bib` + the substitution layer in Ruby).
+- [ ] **C1. Citation rendering — bracketed superscript via natbib.** Decision per `REFS-AND-CITATIONS.md`. Implementation steps:
+  1. Add `\PassOptionsToPackage{numbers,super,sort&compress}{natbib}` to the build's preamble (`bin/build`'s `PREAMBLE_ADDITIONS` constant, or factor out to `common/preamble.tex` if the constant grows).
+  2. Add `\bibliographystyle{unsrtnat}` (citation order) + `\bibliography{refs}` directives at the end of the body.
+  3. Custom `\citet` redefinition so narrative cites emit `Author Year⁽N⁾` rather than natbib-`super` default `Author [N]` (~3-line preamble patch; verify against current natbib release).
+  4. **Source-form migration** `bin/migrate-cites <paper>`: scan segment source for `[Author Year]` patterns, fuzzy-match against `refs.bib`, replace with `\cite{key}` (parenthetical) or `\citet{key}` (narrative — detected by sentence-position context). Flag ambiguous matches (`[Hintikka 1991]` → multiple bib entries) for human disambiguation. Emit a diff for review before applying.
+  5. Author-side convention is captured in AUTHORING.md §2.3 (already updated 2026-05-05).
+  6. Verify rendering visually on `00-test-paper` before per-paper migration. Side-by-side with the current author-year render to confirm the math-collision concern is mitigated by brackets.
+  7. After per-paper migration succeeds, archive `REFS-AND-CITATIONS.md` to `_archive/` (`git mv`).
 
 - [ ] **C2. References section migration** — transition from the manual `[1] Author...` list to natbib + `refs.bib`. Build emits `\bibliographystyle{plainnat}\bibliography{refs}` automatically when `## References` segment is empty / opt-in flag set.
 

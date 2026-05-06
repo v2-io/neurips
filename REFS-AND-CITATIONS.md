@@ -2,6 +2,39 @@
 
 *Temporary. Surveys options and prior discourse on citation rendering + bibliography format. Once a decision lands, the operative parts move into AUTHORING.md / `bin/build` config and this file gets archived.*
 
+---
+
+## DECISION (2026-05-05)
+
+**Render** — bracketed superscript (§3.4 below).
+
+- `\cite{key}` / `\citep{key}` (parenthetical attribution) → `⁽¹⁰⁾`.
+- `\citet{key}` (narrative — author as sentence subject) → `Anderson 1985⁽¹⁰⁾`.
+- Multi-cite via `sort&compress`: `\cite{a,b,c}` → `⁽¹⁻³⁾`.
+
+**Source convention** — `\cite{key}` / `\citet{key}` directly in markdown (raw TeX passes through; no converter parser changes). Replaces the prior `[Author Year]` source convention.
+
+*Why the source change:* `[Author Year]` is structurally ambiguous when an author has multiple same-year publications (Hintikka 1991 has six relevant ones) and forces an author-list-truncation choice (`[Bachman et al. 2031]` vs `[Bachman, Smith, Yang, Lin, Park 2031]`). Bib keys are canonical and editor-completable; both problems vanish.
+
+**Bibstyle** — `unsrtnat` (citation order; `[1]` is first-cited).
+
+**LaTeX preamble** —
+```latex
+\PassOptionsToPackage{numbers,super,sort&compress}{natbib}
+\usepackage{neurips_2026}
+% Custom \citet so narrative cites emit "Author Year⁽N⁾" rather than the
+% default natbib-super "Author [N]" without the year (~3-line patch; tested
+% against natbib release pinned in build).
+\bibliographystyle{unsrtnat}
+\bibliography{refs}
+```
+
+**Implementation** — PIPELINE-TODO §C1. Includes the one-shot `bin/migrate-cites` for converting existing `[Author Year]` segment source to `\cite{key}` form.
+
+**This doc archives to `_archive/`** once the implementation lands and AUTHORING.md is the live source of truth.
+
+---
+
 **Tier markers** (borrowed from `~/src/neurips2026/common/metadata-conventions.md`):
 - **[POLICY]** — explicitly stated in NeurIPS 2026 official documents.
 - **[PATTERN]** — observed convention in published / accepted theory-CS papers.
