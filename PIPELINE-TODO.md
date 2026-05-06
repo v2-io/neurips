@@ -204,3 +204,21 @@ The first equation (`^eq-exit-time`) renders broken; the second (`^eq-persistenc
 **Ask.** Segment-prep-level anchored-equation rewriter should respect codespan boundaries — `$$ ... $$` inside backticks shouldn't be treated as math. Implementation: scan for codespans first, mask their content, then run the `$$ ... $$ ^eq-name` rewrite over the masked text.
 
 **Status:** OPEN
+
+### [01-tragedy + general] Bare `|...|` in inline math `$...$` triggers kramdown table-detection — flagged 2026-05-05 by 01-tragedy migration agent
+
+**Symptom.** Prose containing inline math with bare absolute-value or norm bars — e.g., `$\max_{a \neq a'} |Q_O(a) - Q_O(a')|/|U_o(a) - U_o(a')|$` — gets rendered as a multi-column tabular block by kramdown. The `|` characters inside `$...$` are counted as table column separators when the surrounding paragraph contains 4+ pipes; underscores in the math get escaped (`U\_o`, `Q\_O`); the math context is broken; and lualatex errors fatally on `Extra }, or forgotten $`.
+
+**Context.** Reproduced on `01-tragedy-confident-agent/src/03-kkt-lagrangian.md`, in the prose around eq (9):
+
+```
+... is bounded above by $\max_{a \neq a'} |Q_O(a) - Q_O(a')|/|U_o(a) - U_o(a')|$ on the feasibility interior — finite and computable.
+```
+
+The build emits this paragraph as a `\begin{tabular}{lllll}` with `\toprule`...`\bottomrule`, splitting the math expression at the `|` separators. The `$...$` inline-math span boundaries don't shield the `|` characters from kramdown's table parser.
+
+**Workaround applied.** Use `\lvert ... \rvert` instead of bare `|` in math: `$\max_{a \neq a'} \lvert Q_O(a) - Q_O(a') \rvert / \lvert U_o(a) - U_o(a') \rvert$`. Standard LaTeX, no parse conflict. Applied in `src/03-kkt-lagrangian.md`.
+
+**Ask.** The custom kramdown parser already extends inline math to recognize `$x$` (single-dollar form). It probably needs to also mask `|` characters inside `$...$` spans before kramdown's table-detection pass runs. Otherwise the workaround `\lvert/\rvert` becomes mandatory project-wide for any paper with absolute values or norms in prose-embedded math, which is friction worth removing.
+
+**Status:** OPEN
