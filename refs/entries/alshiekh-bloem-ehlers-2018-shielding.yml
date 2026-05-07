@@ -1,0 +1,16 @@
+---
+title: Safe Reinforcement Learning via Shielding
+year: 2018
+booktitle: Proceedings of the 32nd AAAI Conference on Artificial Intelligence (AAAI 2018)
+pages: 2669--2678
+eprint: '1708.08611'
+archiveprefix: arXiv
+key: alshiekh-bloem-ehlers-2018-shielding
+type: inproceedings
+authors:
+- Alshiekh, Mohammed
+- Bloem, Roderick
+- Ehlers, R{\"u}diger
+- K{\"o}nighofer, Bettina
+- Niekum, Scott
+- Topcu, Ufuk

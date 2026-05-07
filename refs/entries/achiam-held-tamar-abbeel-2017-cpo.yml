@@ -1,0 +1,16 @@
+---
+title: Constrained Policy Optimization
+year: 2017
+booktitle: Proceedings of the 34th International Conference on Machine Learning (ICML 2017)
+volume: '70'
+series: Proceedings of Machine Learning Research
+pages: 22--31
+eprint: '1705.10528'
+archiveprefix: arXiv
+key: achiam-held-tamar-abbeel-2017-cpo
+type: inproceedings
+authors:
+- Achiam, Joshua
+- Held, David
+- Tamar, Aviv
+- Abbeel, Pieter
