@@ -341,6 +341,18 @@ Operational checklist: (1) what program is this a multiplier of — write the ex
 - ❌ **Trusting agent summaries for downstream decisions** — verify against primary sources (`AGENTS.md` §3.5).
 - ❌ **Manual numbering** in headings (`## 3. Title`) or equations (`\tag{N}`) — both drift silently under reorganization. LaTeX numbers; you anchor with `^slug`.
 
+### 3.10 Compression-thinking is the failure-mode signal
+
+When a paper feels too long and the reflex reaches for *"compress" / "trim" / "cut to fit"*: stop. That reflex produces ordering recommendations exactly inverted from what the paper actually wants — motivation paragraphs get cut as expository fat, defensive coverage gets kept as load-bearing, the formal scaffolding survives without the connective tissue that makes it legible.
+
+The reframe: *organization, not subtraction.* The body breathes when each thing lives where it belongs — prose-level wisdom in main text, mathematics in the appendix, defensive coverage in appendix or out. Size is *emergent* from where things naturally belong, not enforced by compression. The right question is *"where does this **want** to live?"* — never *"what can be cut?"*
+
+**Strengthen-before-soften applies dually.** §3.7 names the formal-claim version. The prose version: when an audit recommends compression of an expository section, ask the dual — *could this be expanded to give the reader the motivation that's currently compressed to a single dense paragraph?* That's the move that recovers wisdom; the audit's surface recommendation typically loses it.
+
+Mechanism-side, the curation discipline lands at the manifest level (§7.2). Different `OUT.*.md` manifests select different subsets of segments — trimming is *which segments land in this manifest*, not *editing segments to fit a smaller form*. The 9-page NeurIPS budget is a constraint on the manifest, not an optimization target on the segments. *Page count is observable, not actionable on segments.*
+
+If a future agent or future-self finds themselves reaching for compression-language, that's the failure-mode signal. Return to: where does this want to live?
+
 ---
 
 ## 4. Raw-TeX escape policy
@@ -431,6 +443,41 @@ Same channel for build issues — if something compiles wrong or renders weirdly
 - Avoid forward references to section numbers (paper hasn't started yet); name the result instead.
 - Don't claim "100%" / "comprehensive" / "fully complete" — match language to actual state (PRAXES.md voice discipline).
 
+### 6.4 Body shape (math-heavy theory papers)
+
+The umbrella's `OUTLINE-STRATEGY.md` is the worked-example library — 24 LaTeX excerpts from \citet{jin-allenzhu-bubeck-jordan-2018} *Is Q-learning Provably Efficient?* and \citet{jin-yang-wang-jordan-2020} *Provably Efficient RL with Linear Function Approximation* showing each move below in context. Read that doc when authoring a new section; the rules below define the moves authoritatively.
+
+Math-heavy theory papers fit an 8-page NeurIPS budget naturally when each section does its specific job. The pattern that fits math-density without saturating the body:
+
+**§1 Introduction (1–1.5pp).** Open with the narrative gap. State the main theorem informally — plain English with simplified big-$\mathcal{O}$ notation — *before the reader has met the formal notation.* Reviewers who don't read past §1 still know what the paper claims.
+
+**§2 Related work (~0.5pp).** Conceptual grouping by track / lineage / axis. Explicit "same shape, different axis" disambiguation; how each track relates to the contribution. Avoid defining notation here.
+
+**§3 Preliminaries (1–1.5pp).** *Strict-minimalist.* Every definition that appears in §3 is referenced in either the main theorem statement or the algorithm pseudocode. **Definitions used only in proofs go to the appendix.** Formal assumptions in numbered `[!hypothesis]` / `[!assumption]` callouts followed by *plain-English unpacking right after the formal statement.*
+
+**§4 Main results (~2pp).** The theorem (or umbrella theorem with named instantiations). *Followed immediately by Remarks* — bulleted or paragraph-form, plain-English, "what does this number actually say?" interpretive comments. **This is the single most important structural pattern for math-density management.** Without Remarks, formal theorems function as black boxes; with them, the math becomes intuition-restoring.
+
+**§5 Mechanism / proof sketch (~2–2.5pp).** *Narrative of the proof strategy*, not step-by-step algebra. Surface 1–2 Key Lemmas formally; defer everything else with explicit pointers ("the full proof of Lemma 2, requiring a covering argument over the feature space, is Appendix B"). Algebraic steps in main text get *plain-English explanations* with the algebra itself in the appendix. The mechanism section tells a story with obstacles and how the lemmas resolve them — not a list of lemmas.
+
+**§6 Conclusion (~0.5pp).** Connect back to the §1 narrative gap. *Practitioner takeaways*, not a restated abstract. *Limitations as honest open discussion* — what's open, what's deferred, what scope conditions live where. Not a defensive scope list.
+
+**Appendix (unlimited).** Where the paper lives for a verification-grade reviewer. Each appendix section opens with a structural entry-point ("In this section we prove Theorem 3.1. We first introduce notation; then present lemmas and their proofs; finally combine the lemmas to prove the theorem."). The main text's job is to make the appendix feel necessary; the appendix's job is to be airtight.
+
+**Wisdom-layer specifics that are easy to under-do:**
+- "Unpacking" after a theorem is *narrative paragraphs*, not just bulleted Remarks. Both forms work; the narrative form is harder and lands deeper.
+- Proof-sketch sections tell *a story* with obstacles and resolutions, not just a list of which lemmas combine where.
+- Algebraic steps in main text are *explained in plain English*, with the algebra itself in the appendix. ("Approximately speaking, the last 1/H fraction of indices is given non-negligible weights, whereas the first 1−1/H fraction is forgotten" — narrative for a weighted-average step that the appendix derives in detail.)
+- Conclusions enumerate *practitioner takeaways* rather than restate the abstract.
+- Limitations are *honest open discussion* of what's open, not a scope list.
+
+**Three condensation moves** when the body runs long (organizational, not deletional):
+
+1. *Audit main text for proofs longer than 3 lines.* Move them to appendix; replace with a proof-sketch paragraph that describes the strategy.
+2. *Audit preliminaries.* Any definition not directly referenced in the main theorem or §4 algorithm goes to the appendix.
+3. *Use Remarks heavily after theorems.* They bridge dense math to intuitive claims.
+
+These are *relocation* moves, not deletions. The §3.10 reframe applies: the body needs organization, not subtraction. If the impulse is "delete this paragraph to save half a page," that's the failure-mode signal.
+
 ---
 
 ## 7. Per-paper directory layout
@@ -464,7 +511,7 @@ The manifest is a markdown file. Each row in its tables references a `src/` segm
 
 **Multiple manifests, same segments.** A paper has more than one manifest. The base case is `OUT.full-paper.md` (everything, unconstrained) + `OUT.neurips-2026-paper.md` (subset trimmed to the 9-page main-content budget, possibly reordered). Other forms can follow — `OUT.workshop-talk.md`, `OUT.journal-version.md`, `OUT.short-form.md` — all pointing at the same `src/` segments, just different selections / orderings.
 
-**Reuse over re-edit.** When trimming, prefer to write a new manifest that selects a subset of existing segments rather than edit segments to fit a smaller form. Less drift between versions; math changes propagate to all manifests automatically; fewer segments to apply downstream conventions to. *This is especially valuable while the math is still in flux* — a segment that proves Theorem 3.1 lives in one place; if the proof tightens, every manifest gets the update for free. If a segment doesn't fit a particular manifest, **omit it** (don't fork-and-edit). Trimming becomes a curation problem, not a content-rewriting problem.
+**Reuse over re-edit.** When trimming, prefer to write a new manifest that selects a subset of existing segments rather than edit segments to fit a smaller form. Less drift between versions; math changes propagate to all manifests automatically; fewer segments to apply downstream conventions to. *This is especially valuable while the math is still in flux* — a segment that proves Theorem 3.1 lives in one place; if the proof tightens, every manifest gets the update for free. If a segment doesn't fit a particular manifest, **omit it** (don't fork-and-edit). Trimming becomes a curation problem, not a content-rewriting problem. (See §3.10 for the voice-discipline frame on this — *organization, not subtraction.*)
 
 **Manifest narrative.** A manifest file can carry markdown / LaTeX prose between tables — context, structural rationale, drafting notes, "this section bridges to §4 via..." commentary, anything. The build only assembles rows that look like table rows (lines starting with `|` with the standard column shape); everything else is ignored at build time but renders normally if the manifest is read as a doc. ASF-style; see `~/src/agentic-systems/01-aad-core/OUTLINE.md` for the canonical example with extensive between-table prose.
 
