@@ -674,6 +674,13 @@ class Builder
     \\crefname{equation}{Equation}{Equations}
     \\crefname{section}{Section}{Sections}
     \\crefname{appendix}{Appendix}{Appendices}
+    % Subappendix names: subsections inside \\appendix should also render as
+    % "Appendix A.5" rather than "Section A.5". Pairs with the
+    % \\crefalias{subsection}{subappendix} injected after \\appendix in
+    % assemble_body. Singular/plural intentionally same as appendix's — there
+    % is no separate "subappendix" word in English.
+    \\crefname{subappendix}{Appendix}{Appendices}
+    \\Crefname{subappendix}{Appendix}{Appendices}
   TEX
 
   def initialize(paper_dir, manifest_stem)
@@ -804,7 +811,17 @@ class Builder
 
     manifest.rows.each do |row|
       if row.type == "appendix" && !appendix_set
-        body << "\n\\appendix\n\n"
+        # `\crefalias{section}{appendix}` after `\appendix` tells cleveref to
+        # treat section labels declared from this point onward as type
+        # `appendix` — so `\Cref{sec-empirical}` for a heading in an Appendix-
+        # typed manifest segment renders as "Appendix H" rather than
+        # "Section H". Without the alias, LaTeX's `\section` writes
+        # `section.X` to .aux regardless of \appendix, and cleveref reads
+        # the type literally as `section`. Same shape as the aliascnt fix
+        # for theorem-likes (185d31a) — the section→appendix counter is
+        # already shared by LaTeX's standard \appendix machinery; we only
+        # need to inform cleveref of the type swap.
+        body << "\n\\appendix\n\\crefalias{section}{appendix}\n\\crefalias{subsection}{subappendix}\n\n"
         appendix_set = true
       end
       body << "\n\\newpage\n" if row.type == "checklist"
