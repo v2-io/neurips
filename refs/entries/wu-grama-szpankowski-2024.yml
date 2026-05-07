@@ -9,4 +9,3 @@ authors:
 - Grama, A
 - Szpankowski, W
 arxiv: 2410.19217
-note: arXiv 2024; accepted ICLR 2025 (per OpenReview OwNoTs2r8e). Cited in 03-llm-hallucinate-bound §1 / §7.1 / §8 for the VC-dimension-based no-free-lunch impossibility result on non-hallucinating generative model learning. Year-of-record decision (2024 arXiv vs 2025 ICLR) deferred per source OUTLINE — flagged in TODO.md as "M5 Wu-Grama-Szpankowski venue".
