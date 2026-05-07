@@ -37,16 +37,32 @@
 #   refs pdf <key> <path>        — register a PDF for an entry (copy into refs/pdfs/)
 #   refs validate                — schema-check every entry; flag malformed
 #
-# Concurrency notes:
+# Concurrency + atomicity notes:
 #   - Per-entry files mean two agents adding distinct entries never collide.
-#   - Verification events are filename-unique (timestamp + nonce); append-only
-#     means no two agents write the same path.
+#   - Verification events are filename-unique (timestamp + verifier + criterion);
+#     two agents recording verifications even on the same entry never write the
+#     same path. The directory is append-only — events are never edited.
+#   - All writes (entries, verification events, emitted .bib) go through
+#     `safe_write`: write to `<dest>.tmp.<pid>.<rand>` in the destination's
+#     directory, fsync, then `rename(2)` over the destination. POSIX rename is
+#     atomic on the same filesystem, so a reader either sees the prior content
+#     or the new content — never a half-written file. A crash mid-write leaves
+#     a stray `.tmp.<pid>.<rand>` file (cleaned up on next `refs validate`),
+#     not a truncated entry.
+#   - Concurrent writes to the SAME entry key are intentionally NOT serialized
+#     by a lock — they last-writer-wins at the filesystem level, the same way
+#     two `git checkout` of conflicting branches resolve. Real coordination on
+#     same-key edits happens through git: per-entry files mean conflicts are a
+#     clean single-file merge, not a corrupted shared store. (See refs/README.md
+#     "Design decisions: why per-entry YAML, not sqlite" for the long form.)
 #   - `refs emit` reads but does not mutate entries, so it's safe to run from
 #     a build invocation while another agent is editing an unrelated entry.
 #   - Validation runs per-file; one malformed entry doesn't block the rest.
+#     `refs validate` also sweeps stray `.tmp.*` artifacts from crashed writes.
 
 require "yaml"
 require "fileutils"
+require "securerandom"
 
 ROOT          = Pathname.new(__dir__).parent.expand_path
 REFS_DIR      = ROOT / "refs"
@@ -72,6 +88,45 @@ CRITERIA = {
 REQUIRED_FIELDS = %w[key type title authors year].freeze
 
 VALID_TYPES = %w[article book inproceedings incollection misc techreport phdthesis mastersthesis unpublished].freeze
+
+# Suffix marking in-flight writes from `safe_write`. `refs validate` sweeps
+# any stray `<entry>.tmp.<pid>.<rand>` left over from crashed writes.
+TMP_SUFFIX = ".tmp".freeze
+
+# ─────────────────────────────────────────────────────────────────────────────
+# safe_write — atomic file replace.
+#
+# Writes `content` to `<path>.tmp.<pid>.<rand>` in the destination's directory,
+# fsyncs the body to disk, then `rename(2)`s into place. POSIX rename is
+# atomic on the same filesystem, so concurrent readers either see the prior
+# content or the new content — never a partially-written file. A crash
+# between fsync and rename leaves the temp file behind (harmless; cleaned up
+# on next `refs validate`); a crash mid-write leaves a tmp file with partial
+# content (also harmless — never the destination).
+#
+# This is the durability primitive `bin/refs` relies on. The previous
+# `Pathname#write` (open-truncate-write-close) could leave the destination
+# truncated mid-write, silently destroying entries. See header concurrency
+# notes for the full atomicity contract.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def safe_write(path, content)
+  path = Pathname.new(path)
+  path.dirname.mkpath
+  tmp_name = "#{path.basename}#{TMP_SUFFIX}.#{Process.pid}.#{SecureRandom.hex(4)}"
+  tmp      = path.dirname / tmp_name
+  begin
+    File.open(tmp, File::WRONLY | File::CREAT | File::EXCL, 0o644) do |f|
+      f.write(content)
+      f.fsync
+    end
+    File.rename(tmp, path)
+  rescue StandardError
+    tmp.delete if tmp.exist?
+    raise
+  end
+  path
+end
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Entry — one YAML file = one bib entry. Filename is the canonical key.
@@ -101,10 +156,7 @@ class Entry
     end
   end
 
-  def save
-    ENTRIES_DIR.mkpath
-    Entry.path_for(@key).write(YAML.dump(@data))
-  end
+  def save = safe_write(Entry.path_for(@key), YAML.dump(@data))
 
   def title        = @data["title"]
   def year         = @data["year"]
@@ -201,10 +253,9 @@ class VerificationEvent
   def filename = "#{@timestamp}-#{slug(@verifier)}-#{slug(@criterion)}.md"
 
   def write
-    dir = self.class.dir_for(@key)
-    dir.mkpath
+    dir  = self.class.dir_for(@key)
     path = dir / filename
-    path.write(<<~CONTENT)
+    safe_write(path, <<~CONTENT)
       ---
       key: #{@key}
       criterion: #{@criterion}
@@ -695,7 +746,7 @@ class CLI
 
     HEADER
     body = entries.map(&:to_bibtex).join("\n\n")
-    path.write("#{header}#{body}\n")
+    safe_write(path, "#{header}#{body}\n")
   end
 
   # ── lint ─────────────────────────────────────────────────────────────────
@@ -758,6 +809,7 @@ class CLI
       errors.each { |e| puts "  - #{e}" }
       issues += 1
     end
+    sweep_tmp_artifacts
     puts(issues.zero? ? "all #{Entry.all.size} entries valid." : "(#{issues} entries with schema issues)")
     exit 1 if issues.positive?
   end
@@ -765,6 +817,28 @@ class CLI
   # ── helpers ──────────────────────────────────────────────────────────────
 
   def default_paper_dirs = ROOT.glob("0?-*").select(&:directory?).sort
+
+  # Sweep `.tmp.<pid>.<rand>` files left behind by crashed `safe_write` calls.
+  # The sweep is a side-effect of `refs validate` — runs cheaply, surfaces
+  # anything that looks like a stale write attempt so an operator can decide
+  # whether the destination is intact or needs recovery.
+  def sweep_tmp_artifacts
+    swept = []
+    [ENTRIES_DIR, VERIFY_DIR].each do |dir|
+      next unless dir.directory?
+
+      dir.glob("**/*#{TMP_SUFFIX}.*").each do |stale|
+        # Defensive: only sweep regular files older than 60s, so a concurrent
+        # in-flight write isn't yanked out from under itself.
+        next unless stale.file?
+        next if (Time.now - stale.mtime) < 60
+
+        stale.delete
+        swept << stale.relative_path_from(ROOT).to_s
+      end
+    end
+    swept.each { |p| warn "swept stale temp file: #{p}" }
+  end
 
   def scan_all_papers_for(key)
     default_paper_dirs.flat_map do |pd|
