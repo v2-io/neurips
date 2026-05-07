@@ -1,9 +1,8 @@
 ---
 title: 'Predictable Compression Failures: Why Language Models Actually Hallucinate'
 year: 2025
-journal: arXiv:2509.11208v1
-note: v1 metadata; v2 has expanded title and added a fourth author. The substantive
-  claim cited here ($O(\log n)$ permutation dispersion) carries through both versions.
+journal: arXiv preprint
+volume: arXiv:2509.11208
 key: chlon-2025-predictable
 type: article
 authors:
