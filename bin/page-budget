@@ -247,31 +247,60 @@ def report(paper_dir, manifest)
   end
 end
 
+def paper_dir?(path) = path.directory? && (path / "meta.md").exist? && !path.glob("OUT.*.md").empty?
+
+# Manifests for a paper-dir: every OUT.<stem>.md present (regardless of whether
+# the build has run yet). report() handles the "no .aux yet" case with a "run
+# bin/build first" notice rather than a hard error.
+def manifests_for(paper_dir) = paper_dir.glob("OUT.*.md").map { |m| m.basename(".md").to_s.sub(/^OUT\./, "") }.sort
+
 def main
-  manifest = "neurips-2026-paper"
+  manifest_filter = nil
   OptionParser.new do |o|
     o.banner = <<~USAGE
       usage: bin/page-budget [<paper-dir>...] [--manifest STEM]
 
       Reports main-text page count vs NeurIPS #{LIMIT}-pp limit using each
-      paper's <paper-dir>/out/<manifest>.aux. Run `bin/build` first.
+      paper's <paper-dir>/.build/<manifest>/<manifest>.aux. Run `bin/build` first.
+
+      With no args: cwd-aware. If cwd is a paper-dir, reports on its manifests.
+      Otherwise reports on every paper-dir at the umbrella (matches OUT.*.md +
+      meta.md presence — same heuristic bin/build uses).
+
+      With --manifest STEM: only report on that stem (per paper-dir if multi).
     USAGE
-    o.on("--manifest STEM", "manifest stem (default: neurips-2026-paper)") { |s| manifest = s }
+    o.on("--manifest STEM", "restrict to a specific manifest stem") { |s| manifest_filter = s }
   end.parse!
 
-  targets = ARGV.empty? ? Dir.glob("#{ROOT}/0?-*").select { |d| File.directory?(d) }.sort : ARGV
+  targets =
+    if !ARGV.empty?
+      ARGV.map { |t| Pathname.new(t).directory? ? Pathname.new(t).expand_path : (ROOT / t).expand_path }
+    elsif paper_dir?(Pathname.pwd)
+      [Pathname.pwd]
+    else
+      Dir.glob("#{ROOT}/[0-9][0-9]-*").map { |d| Pathname.new(d) }.select { |p| paper_dir?(p) }.sort
+    end
 
-  puts "# Main-text page budget vs NeurIPS #{LIMIT}-page limit (manifest: #{manifest})"
+  if targets.empty?
+    warn "no paper-dirs found (looked for [0-9][0-9]-* with meta.md + OUT.*.md)"
+    exit 1
+  end
+
+  puts "# Main-text page budget vs NeurIPS #{LIMIT}-page limit"
   puts
 
-  targets.each do |t|
-    p = Pathname.new(t).expand_path
-    p = ROOT / t unless p.directory?
-    unless p.directory?
-      puts "  #{t}: not a directory"
+  targets.each do |p|
+    unless paper_dir?(p)
+      puts "  #{p}: not a paper-dir (no meta.md or no OUT.*.md)"
       next
     end
-    report(p, manifest)
+
+    stems = manifest_filter ? [manifest_filter] : manifests_for(p)
+    if stems.empty?
+      puts "  #{p.basename}: no manifests"
+      next
+    end
+    stems.each { |stem| report(p, stem) }
     puts
   end
 end
