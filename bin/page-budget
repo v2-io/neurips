@@ -4,9 +4,9 @@
 #
 # NeurIPS 2026 caps the main content at 9 pages. References, appendices,
 # and the Paper Checklist are unbudgeted and follow after. This script
-# parses each paper's `<paper-dir>/out/<manifest>.aux` (LaTeX writes the
-# final paginated location of every \section / \appendix / \label there)
-# and reports:
+# parses each paper's `<paper-dir>/.build/<manifest>/<manifest>.aux` (LaTeX
+# writes the final paginated location of every \section / \appendix / \label
+# there) and reports:
 #
 #   - the page main text ends on (one before the first appendix/references)
 #   - overage vs the 9-page limit
@@ -25,8 +25,19 @@
 # instead because TOC entries already classify section vs appendix vs paragraph
 # explicitly via their reference-target suffix (`section.N`, `appendix.A`,
 # `section*.N` for unnumbered headings) — fewer heuristics, more direct.
+#
+# Bibliography-region sharpening. The original three-tier detection over-
+# counts main-text by 1–2 pages when the bibliography sits between body and
+# appendix and tier-2 ("References" TOC entry) doesn't fire (most natbib +
+# unsrtnat configurations don't emit one). Patch: also count `\bibcite{...}`
+# lines in the .aux; when tier-1 (first-appendix marker) is what landed and
+# we can see `\bibcite` entries, subtract estimated bib pages
+# (ceil(n_bibcites / entries_per_page)) from the main-text-end. The
+# entries-per-page heuristic is matches-the-tool's-heuristic-friendly nature
+# (an alternative — read hyperref's bibitem page anchors — only works under
+# non-draft mode). Empirically ~30 entries/page in NeurIPS double-column-ish
+# rendering; the constant is conservative-ish to avoid undercounting bib.
 
-require "pathname"
 require "optparse"
 
 ROOT  = Pathname.new(__dir__).parent.expand_path
@@ -43,16 +54,14 @@ TOC_LINE_RE = /
   \{(?<page>\d+)\}
   \{(?<ref>[^}]+)\}
   \\protected@file@percent
-/x.freeze
+/x
 
 TocEntry = Struct.new(:kind, :inner, :page, :ref, keyword_init: true) do
   def appendix?    = ref.start_with?("appendix.")
   def references?  = inner.include?("References") && !inner.include?("References to") # crude — handles `References` heading vs prose
   def section?     = kind == "section"
-  def title
-    # Strip leading `\numberline {N}` to get the human-readable title.
-    inner.sub(/\A\\numberline\s*\{[^}]+\}\s*/, "")
-  end
+
+  def title = inner.sub(/\A\\numberline\s*\{[^}]+\}\s*/, "")
 
   def number
     if (m = inner.match(/\A\\numberline\s*\{([^}]+)\}/))
@@ -74,31 +83,73 @@ def parse_aux(aux_path)
   entries
 end
 
+# Count `\bibcite{key}{...}` entries — proxy for "bibliography is part of
+# this document." `\bibcite` lines are written when bibtex feeds back the
+# resolved citation labels; one `\bibcite` per cited bib entry. Doesn't carry
+# page info directly (that's the limitation), but the count drives the
+# pages-per-bib-entries heuristic for the bibliography-region sharpening.
+BIBCITE_RE = /^\\bibcite\{/
+
+def count_bibcites(aux_path) = aux_path.each_line.count { |l| l.match?(BIBCITE_RE) }
+
+# Heuristic: ~30 entries per bibliography page in NeurIPS-ish double-column
+# rendering with `unsrtnat`. Conservative-ish (the cost of underestimating bib
+# pages is undercounting main-text-end by a fraction of a page; the cost of
+# overestimating is the opposite). Adjust if real-paper builds drift.
+BIB_ENTRIES_PER_PAGE = 30
+
 # Find the page on which main text ends. Returns [end_page, marker_kind] where
-# marker_kind is "appendix" / "references" / "last-section-fallback".
-# Returns nil only if the paper has no TOC entries at all (still drafting).
+# marker_kind is one of "appendix" / "references" / "appendix-minus-bib" /
+# "last-section-fallback". Returns nil only if the paper has no TOC entries
+# at all (still drafting).
 #
-# Three-tier detection. Tier 1 + 2 are explicit transition markers; tier 3
-# is a fallback for manifests where `\bibliography{refs}` doesn't emit a
-# TOC entry (e.g., under hyperref draft mode or some natbib styles), in
-# which case we estimate main-text-end as the page where the last numbered
-# `\section{}` begins.
-def main_text_end(entries, aux_total_pages)
+# Detection tiers:
+#   T1   first \contentsline {appendix.…} (the most common transition signal)
+#   T2   first \contentsline whose inner contains "References" (firmer signal,
+#        but most natbib + unsrtnat configurations don't emit one)
+#   T1.5 (sharpening) when only T1 fires AND `\bibcite` entries are present,
+#        subtract estimated bib pages from the appendix-start page so the
+#        main-text-end excludes the bibliography sandwich. Surfaces as marker
+#        "appendix-minus-bib" so the report explains the adjustment.
+#   T3   fallback: estimate main-text-end as max(last-main-section-start,
+#        total_pages - 2) when no explicit markers fire. Marker
+#        "last-section-fallback".
+def main_text_end(entries, aux_total_pages, n_bibcites = 0)
+  marker = explicit_marker(entries)
+  return adjusted_for_bib(marker, n_bibcites) if marker
+
+  fallback_marker(entries, aux_total_pages)
+end
+
+# Return [first-marker-page, kind] from explicit appendix / references TOC
+# entries, or nil if neither fired. Lower page wins when both are present.
+def explicit_marker(entries)
   appendix_pages   = entries.select(&:appendix?).map(&:page)
   references_pages = entries.select(&:references?).map(&:page)
   candidates       = []
   candidates << [appendix_pages.min,   "appendix"]   unless appendix_pages.empty?
   candidates << [references_pages.min, "references"] unless references_pages.empty?
+  candidates.min_by(&:first)
+end
 
-  if candidates.any?
-    page, kind = candidates.min_by(&:first)
-    return [page - 1, kind]
+# T1.5 sharpening. When the explicit marker is the appendix (no References TOC
+# entry fired) AND `\bibcite` count > 0, the appendix-start page actually
+# trails an unbudgeted bib block. Subtract ceil(n_bibcites / entries_per_page)
+# from the appendix-start to recover the true main-text-end.
+def adjusted_for_bib(marker, n_bibcites)
+  page, kind = marker
+  if kind == "appendix" && n_bibcites.positive?
+    bib_pages = (n_bibcites.to_f / BIB_ENTRIES_PER_PAGE).ceil
+    adjusted  = page - 1 - bib_pages
+    return [adjusted, "appendix-minus-bib(#{bib_pages}pp est. for #{n_bibcites} refs)"] if adjusted.positive?
   end
+  [page - 1, kind]
+end
 
-  # Tier 3: no explicit markers. If we have at least one main-text section,
-  # estimate main-text-end as the larger of (last section's start page) and
-  # (total pages - 2) — bibliographies typically take 1-2 pages. Returns
-  # marker_kind = "last-section-fallback" so the report flags the estimate.
+# Tier 3 fallback. No explicit markers — estimate main-text-end as the larger
+# of (last main-text section's start page) and (total pages - 2) on the
+# assumption that bibliographies typically take 1-2 pages.
+def fallback_marker(entries, aux_total_pages)
   main_sections = entries.select { |e| e.section? && !e.appendix? }
   return nil if main_sections.empty?
 
@@ -110,20 +161,19 @@ end
 # Total page count from the .aux: we look for the highest page number in any
 # TOC entry. This isn't authoritative (the document may extend past the last
 # TOC entry into bibliography), but it bounds the main-text estimate from below.
-def aux_total_pages(entries)
-  entries.map(&:page).max || 0
-end
+def aux_total_pages(entries) = entries.map(&:page).max || 0
 
 def report(paper_dir, manifest)
   rel = paper_dir.relative_path_from(ROOT)
-  aux = paper_dir / "out" / "#{manifest}.aux"
+  aux = paper_dir / ".build" / manifest / "#{manifest}.aux"
   unless aux.exist?
-    puts "  #{rel}: #{manifest}.aux not found — run `bin/build #{rel} #{manifest}` first"
+    puts "  #{rel}: .build/#{manifest}/#{manifest}.aux not found — run `bin/build #{rel} #{manifest}` first"
     return
   end
 
-  entries = parse_aux(aux)
-  result  = main_text_end(entries, aux_total_pages(entries))
+  entries     = parse_aux(aux)
+  n_bibcites  = count_bibcites(aux)
+  result      = main_text_end(entries, aux_total_pages(entries), n_bibcites)
   unless result
     puts "  #{rel}/#{manifest}: no appendix or references markers in aux (still drafting?)"
     return
@@ -131,8 +181,8 @@ def report(paper_dir, manifest)
 
   end_page, marker = result
   overage = end_page - LIMIT
-  status  = overage > 0 ? "OVER" : "OK"
-  sign    = overage > 0 ? "+" : ""
+  status  = overage.positive? ? "OVER" : "OK"
+  sign    = overage.positive? ? "+" : ""
 
   puts "  #{rel}/#{manifest}: #{end_page}pp main-text  [#{status}: #{sign}#{overage} vs #{LIMIT}-pp]  (#{marker} starts p#{end_page + 1})"
 
@@ -161,7 +211,7 @@ def main
     o.on("--manifest STEM", "manifest stem (default: neurips-2026-paper)") { |s| manifest = s }
   end.parse!
 
-  targets = ARGV.empty? ? Dir.glob("#{ROOT}/0?-*").sort.select { |d| File.directory?(d) } : ARGV
+  targets = ARGV.empty? ? Dir.glob("#{ROOT}/0?-*").select { |d| File.directory?(d) }.sort : ARGV
 
   puts "# Main-text page budget vs NeurIPS #{LIMIT}-page limit (manifest: #{manifest})"
   puts
