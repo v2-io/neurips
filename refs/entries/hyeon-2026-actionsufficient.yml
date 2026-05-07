@@ -1,10 +1,12 @@
 ---
 title: Action-Sufficient Goal Representations
 year: 2026
+eprint: '2601.22496'
+archiveprefix: arXiv
 key: hyeon-2026-actionsufficient
 type: misc
 authors:
-- Hyeon, J
-- Park, W
-- Ahn, H
-- Moon, T
+- Hyeon, Jinu
+- Park, Woobin
+- Ahn, Hongjoon
+- Moon, Taesup

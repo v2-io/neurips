@@ -1,9 +1,10 @@
 ---
 title: "(Im)possibility of Automated Hallucination Detection in Large Language Models"
 year: 2025
-journal: arXiv:2504.17004
+eprint: '2504.17004'
+archiveprefix: arXiv
 key: karbasi-2025-im
-type: article
+type: misc
 authors:
 - Karbasi, A
 - Montasser, O

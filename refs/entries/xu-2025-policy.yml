@@ -2,8 +2,9 @@
 title: 'The Policy Cliff: A Theoretical Analysis of Reward-Policy Maps in Large Language
   Models'
 year: 2025
-journal: arXiv:2507.20150
+eprint: '2507.20150'
+archiveprefix: arXiv
 key: xu-2025-policy
-type: article
+type: misc
 authors:
-- Xu, X
+- Xu, Xingcheng

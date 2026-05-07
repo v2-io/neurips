@@ -1,10 +1,11 @@
 ---
 title: 'RWKV: Reinventing RNNs for the Transformer Era'
+booktitle: 'Findings of the Association for Computational Linguistics: EMNLP 2023'
 year: 2023
 eprint: '2305.13048'
 archiveprefix: arXiv
 key: peng-2023-rwkv
-type: misc
+type: inproceedings
 authors:
 - Peng, Bo
 - Alcaide, Eric

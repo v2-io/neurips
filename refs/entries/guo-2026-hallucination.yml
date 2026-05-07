@@ -2,10 +2,10 @@
 title: 'Hallucination is a Consequence of Space-Optimality: A Rate-Distortion Theorem
   for Membership Testing'
 year: 2026
-journal: arXiv preprint
-volume: arXiv:2602.00906
+eprint: '2602.00906'
+archiveprefix: arXiv
 key: guo-2026-hallucination
-type: article
+type: misc
 authors:
 - Guo, A
 - Li, J

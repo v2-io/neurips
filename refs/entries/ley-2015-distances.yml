@@ -1,9 +1,15 @@
 ---
 title: Distances between nested densities and a measure of the impact of the prior
   in Bayesian statistics
-year: 2015
+journal: The Annals of Applied Probability
+volume: '27'
+number: '1'
+pages: 216--241
+year: 2017
+doi: 10.1214/16-AAP1202
+note: arXiv 1510.05826 (2015)
 key: ley-2015-distances
-type: misc
+type: article
 authors:
 - Ley, C
 - Reinert, G

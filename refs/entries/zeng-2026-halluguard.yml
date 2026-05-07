@@ -1,10 +1,17 @@
 ---
 title: 'HalluGuard: Demystifying Data-Driven and Reasoning-Driven Hallucinations in
   LLMs'
+booktitle: International Conference on Learning Representations (ICLR)
 year: 2026
 eprint: '2601.18753'
 archiveprefix: arXiv
 key: zeng-2026-halluguard
-type: misc
+type: inproceedings
 authors:
-- Zeng, X. and others
+- Zeng, Xinyue
+- Lin, Junhong
+- Yan, Yujun
+- Guo, Feng
+- Shi, Liang
+- Wu, Jun
+- Zhou, Dawei

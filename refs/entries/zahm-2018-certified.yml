@@ -1,7 +1,11 @@
 ---
 title: Certified dimension reduction in nonlinear Bayesian inverse problems
-year: 2018
 journal: Mathematics of Computation
+volume: '91'
+pages: 1789--1835
+year: 2022
+doi: 10.1090/mcom/3737
+note: arXiv 1807.03712 (2018)
 key: zahm-2018-certified
 type: article
 authors:

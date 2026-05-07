@@ -4,6 +4,8 @@ year: 2024
 booktitle: Proceedings of the 56th Annual ACM Symposium on Theory of Computing (STOC)
 pages: 160--171
 doi: 10.1145/3618260.3649777
+eprint: '2311.14648'
+archiveprefix: arXiv
 key: kalai-2023-calibrated
 type: inproceedings
 authors:

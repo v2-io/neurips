@@ -3,6 +3,8 @@ title: Evaluating large language models for accuracy incentivizes hallucinations
 year: 2026
 journal: Nature
 doi: 10.1038/s41586-026-10549-w
+eprint: '2509.04664'
+archiveprefix: arXiv
 note: Earlier version posted as ``Why Language Models Hallucinate'' (arXiv 2025).
 key: kalai-2025-why
 type: article

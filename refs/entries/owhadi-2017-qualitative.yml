@@ -1,7 +1,10 @@
 ---
 title: Qualitative Robustness in Bayesian Inference
 year: 2017
-journal: 'ESAIM: Probability and Statistics. 21:251–274. (arXiv 1411.3984, 2014)'
+journal: 'ESAIM: Probability and Statistics'
+volume: '21'
+pages: 251--274
+note: arXiv 1411.3984 (2014)
 key: owhadi-2017-qualitative
 type: article
 authors:

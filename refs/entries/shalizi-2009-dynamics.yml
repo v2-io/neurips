@@ -1,7 +1,12 @@
 ---
 title: Dynamics of Bayesian Updating with Dependent Data and Misspecified Models
 year: 2009
+journal: Electronic Journal of Statistics
+volume: '3'
+pages: 1039--1074
+doi: 10.1214/09-EJS485
+note: arXiv 0901.1342 (2009)
 key: shalizi-2009-dynamics
-type: misc
+type: article
 authors:
 - Shalizi, C

@@ -1,7 +1,8 @@
 ---
 title: Upper and lower bounds for local Lipschitz stability of Bayesian posteriors
 year: 2025
-howpublished: arXiv preprint
+eprint: '2505.23541'
+archiveprefix: arXiv
 key: cvetkovic-2025-upper
 type: misc
 authors:
