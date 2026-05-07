@@ -32,7 +32,8 @@
 #   refs verify <key> <crit> ... — record a verification event
 #   refs unverify <key> <crit>   — record a "regression" / contested event
 #   refs cited [<paper-dir>]     — keys cited where (defaults: all papers)
-#   refs emit <paper-dir>        — write <paper-dir>/refs.bib for build pipeline
+#   refs emit <paper-dir> [--output <path>]
+#                                — write <paper-dir>/refs.bib (or override path) for build pipeline
 #   refs lint [<paper-dir>]      — anonymization + self-cite + missing-key checks
 #   refs pdf <key> <path>        — register a PDF for an entry (copy into refs/pdfs/)
 #   refs validate                — schema-check every entry; flag malformed
@@ -521,7 +522,8 @@ class CLI
                                  Append a verification event. Outcome: verified | failed | uncertain | n/a.
         unverify <key> <crit>    Append a "failed" event (requires --note).
         cited [<paper-dir>]      Keys cited where; defaults to all 0?-* papers.
-        emit <paper-dir>         Write <paper-dir>/refs.bib for build pipeline.
+        emit <paper-dir> [--output <path>]
+                                 Write <paper-dir>/refs.bib (default) or override path for build pipeline.
         lint [<paper-dir>]       Anonymization + missing-key + self-cite check.
         pdf <key> <path>         Register a PDF for an entry.
         validate                 Schema-check every entry.
@@ -720,7 +722,13 @@ class CLI
   end
 
   def cmd_emit(argv)
-    target = argv.shift or abort "usage: refs emit <paper-dir>"
+    # First positional is <paper-dir>; the rest is parsed for `--output <path>`.
+    # The override path lets `bin/build` land the emitted bib inside its own
+    # ephemeral build directory (`.build/<stem>/<stem>.references.bib`) rather
+    # than the per-paper-dir default. Default behavior preserves
+    # `bin/refs emit <paper>` as a useful standalone command.
+    target = argv.shift or abort "usage: refs emit <paper-dir> [--output <path>]"
+    opts   = parse_kv_flags(argv)
     pd     = Pathname.new(target).expand_path
     abort "not a directory: #{pd}" unless pd.directory?
 
@@ -732,9 +740,11 @@ class CLI
       missing.each { |k| warn "  - #{k}  (#{scanner.call_sites[k].first})" }
     end
 
-    bib_path = pd / "refs.bib"
+    bib_path = opts["output"] ? Pathname.new(opts["output"]).expand_path : pd / "refs.bib"
+    bib_path.dirname.mkpath
     write_bib(bib_path, keys.filter_map { |k| Entry.load(k) })
-    puts "wrote #{bib_path.relative_path_from(ROOT)}  (#{keys.size - missing.size} entries; #{missing.size} missing)"
+    rel = bib_path.to_s.start_with?(ROOT.to_s) ? bib_path.relative_path_from(ROOT) : bib_path
+    puts "wrote #{rel}  (#{keys.size - missing.size} entries; #{missing.size} missing)"
   end
 
   def write_bib(path, entries)
