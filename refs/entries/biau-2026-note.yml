@@ -1,8 +1,10 @@
 ---
 title: A Note on k-NN Gating in RAG
 year: 2026
+eprint: '2601.13744'
+archiveprefix: arXiv
 key: biau-2026-note
-type: article
+type: misc
 authors:
 - Biau, G
 - Boyer, C

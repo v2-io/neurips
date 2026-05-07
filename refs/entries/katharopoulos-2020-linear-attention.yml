@@ -1,0 +1,11 @@
+---
+title: 'Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention'
+booktitle: International Conference on Machine Learning (ICML)
+year: 2020
+key: katharopoulos-2020-linear-attention
+type: inproceedings
+authors:
+- Katharopoulos, Angelos
+- Vyas, Apoorv
+- Pappas, Nikolaos
+- Fleuret, Francois

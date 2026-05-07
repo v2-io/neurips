@@ -1,0 +1,11 @@
+---
+title: Stochastic Multi-Armed-Bandit Problem with Non-Stationary Rewards
+booktitle: Advances in Neural Information Processing Systems (NeurIPS)
+year: 2014
+url: https://arxiv.org/abs/1405.3316
+key: besbes-gur-zeevi-2014-stochastic
+type: inproceedings
+authors:
+- Besbes, Omar
+- Gur, Yonatan
+- Zeevi, Assaf

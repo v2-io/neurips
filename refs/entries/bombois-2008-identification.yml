@@ -6,10 +6,13 @@ journal: Automatica
 volume: '44'
 number: '12'
 pages: 3070--3078
+doi: 10.1016/j.automatica.2008.05.022
 key: bombois-2008-identification
 type: article
 authors:
+- Barenthin, M{\"a}rta
 - Bombois, Xavier
-- Gevers, Michel
-- Hildebrand, Roland
-- Solari, Gabriel
+- Hjalmarsson, H{\aa}kan
+- Scorletti, G{\'e}rard
+internal_note: 'Bibkey retains lead-letter convention from earlier draft (Bombois);
+  actual lead author is Barenthin. Verified via dblp + Automatica TOC 2026-05-07.'

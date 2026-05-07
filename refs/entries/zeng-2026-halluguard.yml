@@ -2,7 +2,9 @@
 title: 'HalluGuard: Demystifying Data-Driven and Reasoning-Driven Hallucinations in
   LLMs'
 year: 2026
+eprint: '2601.18753'
+archiveprefix: arXiv
 key: zeng-2026-halluguard
-type: article
+type: misc
 authors:
 - Zeng, X. and others

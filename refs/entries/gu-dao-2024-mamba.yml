@@ -1,0 +1,9 @@
+---
+title: 'Mamba: Linear-Time Sequence Modeling with Selective State Spaces'
+booktitle: Conference on Language Modeling (COLM)
+year: 2024
+key: gu-dao-2024-mamba
+type: inproceedings
+authors:
+- Gu, Albert
+- Dao, Tri

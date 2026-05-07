@@ -1,10 +1,13 @@
 ---
-title: Diffusions hypercontractives. In
+title: Diffusions hypercontractives
 year: 1985
-publisher: Séminaire de Probabilités XIX. 1983/84, Lecture Notes in Mathematics 1123,
-  177-206. Springer
+booktitle: Séminaire de Probabilités XIX 1983/84
+series: Lecture Notes in Mathematics
+volume: '1123'
+pages: 177--206
+publisher: Springer
 key: bakry-1985-diffusions
-type: book
+type: incollection
 authors:
 - Bakry, D
 - Émery, M

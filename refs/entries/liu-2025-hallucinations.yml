@@ -1,12 +1,13 @@
 ---
-title: Are Hallucinations Bad Estimations? arXiv:2509.21473
+title: Are Hallucinations Bad Estimations?
 year: 2025
+eprint: '2509.21473'
+archiveprefix: arXiv
 key: liu-2025-hallucinations
 type: misc
 authors:
-- Liu, H
-- Hu,
-- Y.-C, J.
-- Zhang, J. Y
-- Song, Z
-- Liu, H
+- Liu, H.
+- Hu, J. Y.-C.
+- Zhang, J. Y.
+- Song, Z.
+- Liu, H.

@@ -1,7 +1,9 @@
 ---
 title: Calibrated Language Models Must Hallucinate
-year: 2023
+year: 2024
 booktitle: Proceedings of the 56th Annual ACM Symposium on Theory of Computing (STOC)
+pages: 160--171
+doi: 10.1145/3618260.3649777
 key: kalai-2023-calibrated
 type: inproceedings
 authors:

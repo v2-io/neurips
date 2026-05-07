@@ -1,0 +1,16 @@
+---
+title: 'Hyena Hierarchy: Towards Larger Convolutional Language Models'
+booktitle: International Conference on Machine Learning (ICML)
+year: 2023
+key: poli-2023-hyena
+type: inproceedings
+authors:
+- Poli, Michael
+- Massaroli, Stefano
+- Nguyen, Eric
+- Fu, Daniel Y.
+- Dao, Tri
+- Baccus, Stephen
+- Bengio, Yoshua
+- Ermon, Stefano
+- Re, Christopher

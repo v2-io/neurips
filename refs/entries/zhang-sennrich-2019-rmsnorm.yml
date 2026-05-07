@@ -1,0 +1,11 @@
+---
+title: Root Mean Square Layer Normalization
+booktitle: Advances in Neural Information Processing Systems (NeurIPS)
+year: 2019
+eprint: '1910.07467'
+archiveprefix: arXiv
+key: zhang-sennrich-2019-rmsnorm
+type: inproceedings
+authors:
+- Zhang, Biao
+- Sennrich, Rico
