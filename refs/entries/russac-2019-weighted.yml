@@ -1,10 +1,10 @@
 ---
-title: Weighted linear bandits for non-stationary environments
+title: Weighted Linear Bandits for Non-Stationary Environments
 year: 2019
-booktitle: NeurIPS
+booktitle: Advances in Neural Information Processing Systems 32 (NeurIPS 2019)
 key: russac-2019-weighted
 type: inproceedings
 authors:
-- Russac, Y
-- Vernade, C
-- Cappé, O
+- Russac, Yoan
+- Vernade, Claire
+- Capp{\'e}, Olivier

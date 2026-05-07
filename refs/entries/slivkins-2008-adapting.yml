@@ -1,9 +1,10 @@
 ---
-title: 'Adapting to a changing environment: The Brownian restless bandits'
+title: 'Adapting to a Changing Environment: The Brownian Restless Bandits'
 year: 2008
-booktitle: COLT
+booktitle: Proceedings of the 21st Annual Conference on Learning Theory (COLT 2008)
+pages: 343--354
 key: slivkins-2008-adapting
 type: inproceedings
 authors:
-- Slivkins, A
-- Upfal, E
+- Slivkins, Aleksandrs
+- Upfal, Eli

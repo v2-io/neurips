@@ -1,10 +1,12 @@
 ---
-title: Recursive Least Squares with Variable-Direction Forgetting
+title: 'Recursive Least Squares with Variable-Direction Forgetting: Compensating
+  for the Loss of Persistency'
 year: 2020
 journal: IEEE Control Systems Magazine
 volume: '40'
 number: '4'
 pages: 80--102
+doi: 10.1109/MCS.2020.2990516
 key: goel-2020-recursive
 type: article
 authors:
