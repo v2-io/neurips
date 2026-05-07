@@ -1,10 +1,13 @@
 ---
-title: Recursive least squares with variable-direction forgetting
+title: Recursive Least Squares with Variable-Direction Forgetting
 year: 2020
-journal: IEEE Control Systems Magazine. 40(4), 80–102
+journal: IEEE Control Systems Magazine
+volume: '40'
+number: '4'
+pages: 80--102
 key: goel-2020-recursive
 type: article
 authors:
-- Goel, A
-- Bruce, A. L
-- Bernstein, D. S
+- Goel, Ankit
+- Bruce, Adam L.
+- Bernstein, Dennis S.

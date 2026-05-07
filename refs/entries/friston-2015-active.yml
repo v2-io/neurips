@@ -1,13 +1,17 @@
 ---
-title: Active inference and epistemic value
+title: Active Inference and Epistemic Value
 year: 2015
-journal: Cognitive Neuroscience. 6(4), 187–214
+journal: Cognitive Neuroscience
+volume: '6'
+number: '4'
+pages: 187--214
+doi: 10.1080/17588928.2015.1020053
 key: friston-2015-active
 type: article
 authors:
-- Friston, K
-- Rigoli, F
-- Ognibene, D
-- Mathys, C
-- FitzGerald, T
-- Pezzulo, G
+- Friston, Karl
+- Rigoli, Francesco
+- Ognibene, Dimitri
+- Mathys, Christoph
+- FitzGerald, Thomas
+- Pezzulo, Giovanni

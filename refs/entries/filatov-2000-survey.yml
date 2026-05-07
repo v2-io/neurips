@@ -1,9 +1,13 @@
 ---
-title: Survey of adaptive dual control methods
+title: Survey of Adaptive Dual Control Methods
 year: 2000
-booktitle: IEE Proceedings — Control Theory and Applications. 147(1), 118–128
+journal: IEE Proceedings - Control Theory and Applications
+volume: '147'
+number: '1'
+pages: 118--128
+doi: 10.1049/ip-cta:20000107
 key: filatov-2000-survey
-type: inproceedings
+type: article
 authors:
-- Filatov, N. M
-- Unbehauen, H
+- Filatov, N. M.
+- Unbehauen, H.

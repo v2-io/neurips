@@ -1,9 +1,13 @@
 ---
-title: Persistence of excitation properties for time-varying autoregressive systems
+title: Persistence of Excitation Properties for Time-Varying Autoregressive Systems
 year: 2000
-publisher: SIAM Journal on Control and Optimization
+journal: SIAM Journal on Control and Optimization
+volume: '39'
+number: '1'
+pages: 133--140
+doi: 10.1137/S0363012998343483
 key: bittanti-2000-persistence
-type: book
+type: article
 authors:
-- Bittanti, S
-- Campi, M
+- Bittanti, Sergio
+- Campi, Marco C.

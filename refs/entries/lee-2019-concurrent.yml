@@ -1,12 +1,14 @@
 ---
-title: Concurrent learning adaptive control with directional forgetting
+title: Concurrent Learning Adaptive Control with Directional Forgetting
 year: 2019
-journal: IEEE Transactions on Automatic Control. 64(12), 5164–5170
+journal: IEEE Transactions on Automatic Control
+volume: '64'
+number: '12'
+pages: 5164--5170
+doi: 10.1109/TAC.2019.2911863
 key: lee-2019-concurrent
 type: article
 authors:
-- Lee,
-- H.-I,
-- Shin,
-- H.-S,
-- Tsourdos, A
+- Lee, Hae-In
+- Shin, Hyo-Sang
+- Tsourdos, Antonios

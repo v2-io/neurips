@@ -1,10 +1,13 @@
 ---
-title: Wide-sense adaptive dual control for nonlinear stochastic systems
+title: Wide-Sense Adaptive Dual Control for Nonlinear Stochastic Systems
 year: 1973
-journal: IEEE Transactions on Automatic Control. 18(2), 98–108
+journal: IEEE Transactions on Automatic Control
+volume: '18'
+number: '2'
+pages: 98--108
 key: tse-1973-widesense
 type: article
 authors:
-- Tse, E
-- Bar-Shalom, Y
-- Meier, L
+- Tse, Edison
+- Bar-Shalom, Yaakov
+- Meier, Lewis

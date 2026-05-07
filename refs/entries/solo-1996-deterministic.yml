@@ -1,9 +1,12 @@
 ---
-title: 'Deterministic adaptive control with slowly varying parameters: An averaging
-  analysis'
+title: 'Deterministic Adaptive Control with Slowly Varying Parameters: An Averaging
+  Analysis'
 year: 1996
-journal: International Journal of Control. 64(1), 1–18
+journal: International Journal of Control
+volume: '64'
+number: '1'
+pages: 1--18
 key: solo-1996-deterministic
 type: article
 authors:
-- Solo, V
+- Solo, Victor

@@ -2,11 +2,14 @@
 title: 'Identification for control of multivariable systems: Controller validation
   and experiment design via LMIs'
 year: 2008
-journal: Automatica. 44(12), 3070–3078
+journal: Automatica
+volume: '44'
+number: '12'
+pages: 3070--3078
 key: bombois-2008-identification
 type: article
 authors:
-- Bombois, X
-- Gevers, M
-- Hildebrand, R
-- Solari, G
+- Bombois, Xavier
+- Gevers, Michel
+- Hildebrand, Roland
+- Solari, Gabriel

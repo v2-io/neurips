@@ -1,10 +1,14 @@
 ---
-title: Learning action-oriented models through active inference
-year: 2019
-journal: PLoS Computational Biology. 16(4), e1007805
+title: Learning Action-Oriented Models Through Active Inference
+year: 2020
+journal: PLOS Computational Biology
+volume: '16'
+number: '4'
+pages: e1007805
+doi: 10.1371/journal.pcbi.1007805
 key: tschantz-2019-learning
 type: article
 authors:
-- Tschantz, A
-- Seth, A. K
-- Buckley, C. L
+- Tschantz, Alexander
+- Seth, Anil K.
+- Buckley, Christopher L.

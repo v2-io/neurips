@@ -1,9 +1,11 @@
 ---
-title: Information theory of decisions and actions. In
+title: Information Theory of Decisions and Actions
 year: 2011
-publisher: Perception-Action Cycle. (pp. 601–636). Springer
+booktitle: 'Perception-Action Cycle: Models, Architectures, and Hardware'
+pages: 601--636
+publisher: Springer
 key: tishby-2011-information
-type: book
+type: incollection
 authors:
-- Tishby, N
-- Polani, D
+- Tishby, Naftali
+- Polani, Daniel
