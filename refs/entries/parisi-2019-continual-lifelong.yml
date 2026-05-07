@@ -5,7 +5,7 @@ journal: Neural Networks
 volume: '113'
 pages: 54--71
 doi: 10.1016/j.neunet.2019.01.012
-note: Continual / lifelong learning literature anchor; B-N4 §7 bridge paragraph.
+internal_note: Continual / lifelong learning literature anchor; B-N4 §7 bridge paragraph.
 key: parisi-2019-continual-lifelong
 type: article
 authors:

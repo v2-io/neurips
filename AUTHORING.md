@@ -167,6 +167,8 @@ This matches the NeurIPS academic convention without changing how authors write.
 
 The OUT.*.md manifest's `Type` column drives the `\appendix` directive — the build injects `\appendix` before the first row whose Type is `Appendix`. Section headings in appendix segments use the same un-numbered authoring (`## Setup`); LaTeX renders them as A.1, A.2, B, B.1, etc. **No manual `## A.1 Setup` prefix.**
 
+For *what* belongs in the appendix vs body vs supplementary-materials ZIP, see §5.7.
+
 ### 1.11 References section
 
 The references section is auto-generated. Add a `Bibliography`-typed row to the manifest (`OUT.<stem>.md`) pointing at a `src/references.md` placeholder; the build emits `\bibliography{<stem>.references}` at the appropriate position and natbib renders the cited entries from `refs/entries/` (auto-emitted into `.build/<stem>/<stem>.references.bib` before each compile). Cite-source form is `\cite{key}` / `\citet{key}` per §2.3. There is no manual `[1] Author...` list; the build owns the bibliography rendering end-to-end.
@@ -430,6 +432,26 @@ When more than one pair is in flight, each runs in its own try/rescue — a fail
 If you need something the preamble doesn't have — a missing package, a new theorem-style environment (`\newtheorem{conjecture}[theorem]{Conjecture}` for example), a `\crefname` entry for some custom env, a font weight, a math symbol from an exotic package, anything — **ask Joseph and the build-pipeline owner will add it to the preamble.** Don't try to inject preamble bits from segment source; the segment-author / build-owner separation matters for cross-paper consistency.
 
 Same channel for build issues — if something compiles wrong or renders weirdly, `PIPELINE-TODO.md ## Inbox` (atomic-append flag, AGENTS §5.1) is the canonical channel; or a per-paper `TODO.md` flag for paper-specific weirdness.
+
+### 5.7 Appendix content scope
+
+**The main paper must be self-contained.** Reviewers are not obligated to read the appendix to understand the core contribution or verify primary results. Stress-test: *"if a reviewer skipped the appendix entirely, would the main contribution still land?"* If no, the appendix has absorbed something that belongs in the body — restructure rather than compressing.
+
+**Belongs in the appendix:**
+
+- Full formal proofs for theorems / lemmas stated in the body. Body proof-sketches link in via `[[#^thm-...]]` (§2.2). Appendix proofs open with a structural entry-point ("In this section we prove Theorem 3.1. We first ...") per §6.4.
+- Algebraic derivations whose plain-English narrative lives in the body — main text gives the *interpretation* of each step; appendix gives the algebra (§6.4).
+- Definitions referenced only inside proofs (not in the main theorem statement or body algorithm).
+- Experimental details — hyperparameter lists + tuning ranges, training setup (splits, hardware, compute), dataset details (collection / licensing / preprocessing). Often inapplicable for theory-only papers.
+- Additional results, ablations, extended discussions (fuller limitations / societal-impact when the body version is condensed).
+- IRB / ethics details for human-subject research.
+
+**Does *not* belong in the appendix:**
+
+- **Raw code or data.** These go in the supplementary-materials ZIP (≤ 100 MB, separate upload), not pasted into the PDF. The submission-time ZIP-builder lives in `PIPELINE-TODO.md` §E4 — surface to the build-pipeline owner when needed.
+- **Identifying information** — §5.3 anonymization applies to the appendix exactly as it does to the body.
+
+The appendix does not count toward the 9-page main-content budget (§5.1); total PDF size must stay under 50 MB. Build pipeline reports main-text page count separately from appendix (§5.6). Manifest-driven `\appendix` injection, internal numbering (`Theorem A.1` via cleveref), and un-numbered authoring conventions are in §1.10.
 
 ---
 

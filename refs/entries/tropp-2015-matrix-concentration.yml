@@ -6,7 +6,8 @@ volume: '8'
 number: 1--2
 pages: 1--230
 doi: 10.1561/2200000048
-note: arXiv:1501.01571. Theorem 5.1.1 (matrix Chernoff lower-tail) used in B-N4 Lemma
+note: arXiv:1501.01571.
+internal_note: Theorem 5.1.1 (matrix Chernoff lower-tail) used in B-N4 Lemma
   4.1.1 / Appendix A.4.
 key: tropp-2015-matrix-concentration
 type: article
