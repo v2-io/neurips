@@ -25,6 +25,42 @@ refs/
 
 **Anonymization is first-class.** `refs/deny-list.yml` enumerates DOIs / authors / proper-nouns that must not appear in submitted papers. `bin/refs lint` runs the deny-list against every entry plus every key cited in any paper — surfaces before submission, not at PDF audit.
 
+## Design decisions: why per-entry YAML, not sqlite
+
+The original sketch was sqlite. Re-examined 2026-05-06 and re-decided in favor of hardened YAML-on-disk. The summary of the trade study:
+
+| Concern                           | sqlite                                                | per-entry YAML (this design)                                     |
+|-----------------------------------|-------------------------------------------------------|------------------------------------------------------------------|
+| Crash-atomicity of single write   | WAL (journal-replay)                                  | `safe_write`: temp-file + fsync + `rename(2)`                    |
+| Concurrent writes to distinct keys | serialized inside one DB connection                   | filesystem-disjoint; no contention                               |
+| Concurrent writes to same key     | last-writer-wins, contents irrecoverable from history | last-writer-wins at filesystem; previous content recoverable via `git log -p` of the YAML file |
+| Reviewability of audit trail      | binary; reviewer needs `sqlite3` CLI to inspect       | markdown frontmatter; `cat`, `git blame`, GitHub PR diffs all work |
+| Code-of-Conduct provenance        | event rows in a table                                 | one file per event with diffable frontmatter + free-form note    |
+| Build-pipeline interface          | export step → `<paper-dir>/refs.bib`                  | export step → `<paper-dir>/refs.bib` (same artifact, same `bin/build` contract) |
+| Backup / restore                  | one binary file (must be quiesced)                    | `git` already does this, per-entry granularity                   |
+| Dependencies                      | `sqlite3` gem (native build)                          | stdlib only                                                      |
+| Indices / query planning          | built-in B-trees                                      | linear scan over 170 files (ms-scale; non-issue at this size)    |
+| Multi-step transactions           | `BEGIN/COMMIT`                                        | not available; the data model has no operation that needs them   |
+
+The decisive points: (i) the verification audit trail is *the* Code-of-Conduct surface for citation discipline, and a binary store would make it harder for reviewers — internal or post-hoc — to read; (ii) the data model is document-shaped, not relational (no joins, no foreign keys, no index-driven queries that aren't trivially fine at 170 entries scanned linearly); (iii) per-entry `git diff` / `git blame` / GitHub PR review of bib edits is genuinely load-bearing in the multi-agent workflow (the `internal_note:` migration on 2026-05-06 across all three papers happened by reviewing per-entry YAML diffs); (iv) `safe_write` closes the only legitimate gap that sqlite-with-WAL would have closed (truncated mid-write entries) for free.
+
+What sqlite would have bought that we don't get: ACID multi-step transactions. The data model has no operation that needs them. `add` is a single write. `verify` is a single write to a fresh filename. `emit` is read-only on entries + a single write of the per-paper `.bib`. There is no "update entry and append verification event in the same transaction" operation, and there's no obvious pressure to introduce one.
+
+## Atomicity contract (`safe_write`)
+
+All entry writes, verification-event writes, and emitted-bib writes go through `safe_write` (defined at `bin/refs:114`):
+
+1. Write `content` to a sibling tempfile `<dest>.tmp.<pid>.<rand>` using `O_WRONLY | O_CREAT | O_EXCL`.
+2. `fsync` the body to disk.
+3. `File.rename(tmp, dest)` — POSIX `rename(2)` is atomic on the same filesystem (APFS, ext4, xfs all honor this).
+4. On any error, the tmp is unlinked; the destination is untouched.
+
+A reader concurrent with a writer always sees either the prior content or the new content — never a half-written file. A crash between fsync and rename leaves a `.tmp.<pid>.<rand>` artifact (harmless; never the destination); `bin/refs validate` sweeps such artifacts older than 60s (the floor protects against yanking concurrent in-flight writes).
+
+**Concurrent writes to the same key are intentionally not serialized by a lock.** Last-writer-wins at the filesystem level. The contents-side question — "which agent's DOI value is right?" — isn't solved by a lock anyway; it's a content disagreement that needs a human-in-the-loop decision either way. The collision surfaces as a pending change in `git status`, which is the right place for the resolution. (Same-key concurrent writes are also vanishingly rare in practice given `firstauthor-year-shortword` keying.)
+
+**What is *not* defended against:** silent media-level corruption past the rename barrier (a bit-flip in a YAML file that's been on disk for weeks). For that, `git` is the recovery path — every committed entry is content-addressable via SHA-1 in the object store, and `git fsck` surfaces corruption. The window where a YAML edit is not yet committed is the one window where `safe_write` is the only line of defense; that window is small in practice (agents commit verification events as they go) and `safe_write` covers it.
+
 ## Schema — `refs/entries/<bibkey>.yml`
 
 ```yaml
