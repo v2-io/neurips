@@ -40,8 +40,11 @@ number: '3'
 pages: 247--258                       # BibTeX en-dash form (LaTeX renders as en-dash)
 doi: 10.1016/0005-1098(85)90058-5     # bare DOI, no URL prefix
 url: ...                              # optional; for entries with no DOI
-note: ...                             # optional; e.g., "Russian original 1969"
+note: ...                             # optional; SCHOLARLY-ONLY — emitted to bibtex; appears in rendered bibliography
+internal_note: ...                    # optional; AGENT/WORKING metadata — never emitted to bibtex
 ```
+
+**`note:` vs `internal_note:` — important distinction.** The `note:` field gets emitted to the BibTeX entry's `note = {...}` and `unsrtnat` (and most natbib styles) renders it as trailer text in the published bibliography. So `note:` is reserved for genuinely-scholarly content that belongs in the rendered bib: "Russian original 1969", "Originally posted as arXiv 2010.08380", "Reprinted in...", "Theorem 2 referenced in this work". The `internal_note:` field is for agent-side working metadata: "Cited in 03-llm-hallucinate §1 / §7.1 for VC-dim impossibility", "Year-of-record decision deferred per source OUTLINE", "Verified 2026-05-05 via OpenReview ID OwNoTs2r8e". `bin/refs emit` ignores `internal_note:` entirely — it stays in YAML for the agent's records and never reaches the rendered PDF. AUTHORING §3.9's chronicle-voice anti-pattern applies to bib `note:` fields too — agent-meta bleeding into the published bibliography is a real failure mode (caught 2026-05-06 across all three NeurIPS 2026 papers).
 
 **Conventions inherited from the upstream `common/refs.bib`:**
 - Bib keys: `firstauthor-year-shortword` (lowercase, hyphenated). Multi-author entries can extend (`boyd-ghaoui-feron-balakrishnan-1994-lmi`).
