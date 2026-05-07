@@ -4,9 +4,11 @@ __pycache__/
 .venv/
 .obsidian/
 
-# Build artifacts (per-paper out/ dirs)
-0?-*/out/
+# Build artifacts (umbrella territory — per-paper submodules manage their own .gitignore)
 00-test-paper/out/
+00-test-paper/.build/
+00-test-paper/*.prior.pdf
+00-test-paper/*.pdf
 
 # refs/ — citation system: entries + verifications + deny-list are tracked;
 # PDFs are large + likely copyrighted; _emitted/ is generated artifact.

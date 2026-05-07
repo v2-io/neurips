@@ -3,10 +3,28 @@
 # bin/build — assemble a paper from an OUT.*.md manifest into a NeurIPS-formatted PDF.
 #
 # Usage:
-#   bin/build <paper-dir> [manifest-stem]
+#   bin/build                                # cwd-aware; if cwd is a paper-dir, build all OUT.*.md manifests
+#   bin/build <paper-dir>                    # all OUT.*.md manifests in <paper-dir>
+#   bin/build <paper-dir> <manifest-stem>    # specific manifest in <paper-dir>
+#   bin/build <manifest-stem>                # specific manifest in cwd (cwd must be a paper-dir)
+#   bin/build --all                          # every paper-dir under umbrella, every manifest
 #
 #   <paper-dir>      e.g., 00-test-paper, 01-tragedy-confident-agent
-#   [manifest-stem]  defaults to "test" (reads OUT.test.md). Reads OUT.<stem>.md.
+#   <manifest-stem>  reads OUT.<stem>.md (e.g., `full-paper`, `neurips-2026-paper`).
+#
+# Output layout (per (paper, manifest) pair):
+#   <paper>/.build/<stem>/<stem>.tex             rendered LaTeX (ephemeral)
+#   <paper>/.build/<stem>/<stem>.references.bib  auto-emitted by `bin/refs emit`
+#   <paper>/.build/<stem>/<stem>.pdf             compiled PDF (canonical inside .build/)
+#   <paper>/.build/<stem>/<stem>.{aux,bbl,log,…} LaTeX intermediates
+#   <paper>/<stem>.pdf                           copy of the .build/ pdf on success
+#   <paper>/<stem>.prior.pdf                     last-known-good PDF (snapshot before each build)
+#   <paper>/<stem>.extracted.bib                 repo-visibility snapshot of the emitted bib
+#
+# When more than one (paper, manifest) pair is being built (cwd-default with
+# multiple manifests, <paper-dir>-no-stem, --all), each pair runs in its own
+# try/rescue — a failure in one pair doesn't poison the rest. A run with any
+# failure exits nonzero with a summary listing what passed and what failed.
 #
 # Phase A scope: read meta.md (YAML frontmatter + abstract), parse the OUT.*.md
 # assembly manifest, render each segment via a kramdown→LaTeX pipeline that
@@ -14,7 +32,8 @@
 # environments, [[#^anchor]] cross-refs to \Cref{anchor}, [!table] callouts to
 # \begin{table}+caption+label+tabular, [!note]/[!todo]/[!info]/[!warning]/[!tip]
 # to nothing (stripped). Splice into common/neurips_2026.tex template, run
-# lualatex twice, output to <paper-dir>/out/<stem>.pdf.
+# lualatex twice, output to <paper-dir>/.build/<stem>/<stem>.pdf and copy to
+# <paper-dir>/<stem>.pdf on success.
 #
 # Architecture:
 #   * Kramdown::Parser::NeurIPS — parser-level extension. Recognizes the
@@ -45,6 +64,7 @@ require "open3"
 ROOT       = Pathname.new(__dir__).parent.expand_path
 COMMON_DIR = ROOT / "common"
 TEMPLATE   = COMMON_DIR / "neurips_2026.tex"
+REFS_BIN   = ROOT / "bin" / "refs"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Custom kramdown parser — extracts callout markers and header anchors at
@@ -437,7 +457,7 @@ class Kramdown::Converter::NeurIPS < Kramdown::Converter::Latex
     if marker[:cols]
       body = body
              .sub(/\\begin\{tabular\}\{[^}]*\}/, "\\begin{tabularx}{\\textwidth}{#{marker[:cols]}}")
-             .sub(/\\end\{tabular\}/, "\\end{tabularx}")
+             .sub("\\end{tabular}", "\\end{tabularx}")
     end
     out  = +"\\begin{table}[h]\n"
     out << "  \\centering\n"
@@ -683,11 +703,14 @@ class Builder
     \\Crefname{subappendix}{Appendix}{Appendices}
   TEX
 
+  # Resolve <paper-dir> against ROOT only when given as a relative path; passing
+  # an already-absolute Pathname (from the CLI dispatcher) avoids
+  # double-prepending ROOT when cwd != umbrella.
   def initialize(paper_dir, manifest_stem)
-    @paper_dir          = (ROOT / paper_dir).expand_path
-    @manifest_stem      = manifest_stem
-    @out_dir            = @paper_dir / "out"
-    @lint_findings      = []
+    @paper_dir           = paper_dir.is_a?(Pathname) ? paper_dir.expand_path : (ROOT / paper_dir).expand_path
+    @manifest_stem       = manifest_stem
+    @build_dir           = @paper_dir / ".build" / @manifest_stem
+    @lint_findings       = []
     @has_unresolved_refs = false
   end
 
@@ -697,21 +720,83 @@ class Builder
     meta     = Meta.new(@paper_dir / "meta.md")
     manifest = Manifest.new(@paper_dir / "OUT.#{@manifest_stem}.md")
 
+    snapshot_prior_pdf
+    FileUtils.mkdir_p(@build_dir)
+    emit_references_bib
+
     body_tex = assemble_body(manifest)
     body_tex = resolve_unresolved_refs(body_tex)
     full_tex = render_template(meta, body_tex)
 
-    FileUtils.mkdir_p(@out_dir)
-    tex_path = @out_dir / "#{@manifest_stem}.tex"
+    tex_path = @build_dir / "#{@manifest_stem}.tex"
     tex_path.write(full_tex)
 
     compile_pdf(tex_path)
+    publish_artifacts
     report_lint
-    pdf_path = @out_dir / "#{@manifest_stem}.pdf"
-    puts "✓ #{pdf_path.relative_path_from(ROOT)}"
+    report_success
   end
 
   private
+
+  # Step 1 of the build lifecycle. Move the existing top-level <stem>.pdf to
+  # <stem>.prior.pdf so a failed build leaves the last-known-good PDF visible
+  # in the working tree. Compile artifacts inside .build/<stem>/ stay intact
+  # for diagnosis on failure (logs, .aux, partial pdf if any).
+  def snapshot_prior_pdf
+    pdf = @paper_dir / "#{@manifest_stem}.pdf"
+    return unless pdf.exist?
+
+    prior = @paper_dir / "#{@manifest_stem}.prior.pdf"
+    FileUtils.mv(pdf, prior, force: true)
+  end
+
+  # Auto-emit the per-paper bib by shelling out to `bin/refs emit`. Lands at
+  # <build>/<stem>.references.bib; bibtex picks it up via BIBINPUTS pointing
+  # at .build/<stem>/. Closes the stale-bib failure mode where edits to
+  # refs/entries/ wouldn't reach the build until an agent ran emit by hand.
+  # Using a shell-out (rather than requiring bin/refs as a library) keeps the
+  # process-isolation contract: a refs-side bug or env-side issue surfaces as
+  # a build failure, not a silent partial bib.
+  def emit_references_bib
+    output = @build_dir / "#{@manifest_stem}.references.bib"
+    cmd    = [REFS_BIN.to_s, "emit", @paper_dir.to_s, "--output", output.to_s]
+    out, status = Open3.capture2e(*cmd)
+    return if status.success?
+
+    raise "bin/refs emit failed:\n#{out}"
+  end
+
+  # Step 6 of the build lifecycle. Copy the canonical PDF + emitted bib out of
+  # .build/<stem>/ into the paper-dir for repo-visibility. The "extracted" name
+  # on the bib is explicit-on-purpose so authors don't hand-edit it (canonical
+  # edits go through bin/refs add / refs/entries/<key>.yml + emit).
+  def publish_artifacts
+    pdf_src = @build_dir / "#{@manifest_stem}.pdf"
+    bib_src = @build_dir / "#{@manifest_stem}.references.bib"
+    FileUtils.cp(pdf_src, @paper_dir / "#{@manifest_stem}.pdf") if pdf_src.exist?
+    FileUtils.cp(bib_src, @paper_dir / "#{@manifest_stem}.extracted.bib") if bib_src.exist?
+  end
+
+  def report_success
+    pdf_rel = (@paper_dir / "#{@manifest_stem}.pdf").relative_path_from(ROOT)
+    puts "✓ #{pdf_rel}"
+    run_page_budget
+  end
+
+  # Wire page-budget into the success path. Failures are non-fatal — page
+  # detection is heuristic and we'd rather degrade gracefully than block the
+  # build on a tooling glitch.
+  def run_page_budget
+    pb = ROOT / "bin" / "page-budget"
+    return unless pb.exist?
+
+    rel_paper = @paper_dir.relative_path_from(ROOT).to_s
+    out, _status = Open3.capture2e(pb.to_s, rel_paper, "--manifest", @manifest_stem)
+    out.lines.each { |l| print l unless l.strip.empty? || l.start_with?("# ") }
+  rescue StandardError => e
+    warn "page-budget failed: #{e.message}"
+  end
 
   # Replace `\Cref{X}` / `\eqref{X}` / `\cite[opt]{X}` (and natbib variants)
   # that point to undefined labels or bib-keys with a visible placeholder
@@ -746,20 +831,18 @@ class Builder
   # surrounding cite/cref calls). Plain bracketed text with `\,` thin space
   # has no such interaction.
   UNRESOLVED_PLACEHOLDER = ->(label) { "[?\\,#{label}]" }
-  CITE_CMD_RE            = /\\(cite|citet|citep|citealt|citealp|citeauthor|citeyear)\*?(\[[^\]]*\])?\{([^}]+)\}/.freeze
+  CITE_CMD_RE            = /\\(cite|citet|citep|citealt|citealp|citeauthor|citeyear)\*?(\[[^\]]*\])?\{([^}]+)\}/
 
-  # Set of bib-keys bibtex will resolve at compile time. Prefer parsing the
-  # paper's local `refs.bib` (the authoritative artifact bibtex actually reads
-  # via BIBINPUTS) when present; fall back to the umbrella's `refs/entries/`
-  # for fresh papers that haven't run `bin/refs emit` yet. The local-refs.bib
-  # path matters for `00-test-paper` which has a hand-curated refs.bib whose
-  # keys diverge from the umbrella canonical form (e.g., `boyd-1994-lmi` vs
-  # `boyd-ghaoui-feron-balakrishnan-1994-lmi`).
+  # Set of bib-keys bibtex will resolve at compile time. Reads the
+  # freshly-emitted `.build/<stem>/<stem>.references.bib` (the authoritative
+  # artifact bibtex sees via BIBINPUTS); falls back to the umbrella's
+  # `refs/entries/` keyset on the off chance emit hasn't run yet (which would
+  # only happen if call() is invoked out of order — defensive, not load-bearing).
   def valid_bib_keys
     @valid_bib_keys ||= begin
-      local_bib = @paper_dir / "refs.bib"
-      if local_bib.exist?
-        local_bib.read.scan(/^@\w+\{([^,\s]+)\s*,/).flatten.to_set
+      build_bib = @build_dir / "#{@manifest_stem}.references.bib"
+      if build_bib.exist?
+        build_bib.read.scan(/^@\w+\{([^,\s]+)\s*,/).flatten.to_set
       else
         (ROOT / "refs" / "entries").glob("*.yml").map { |p| p.basename(".yml").to_s }.to_set
       end
@@ -781,9 +864,11 @@ class Builder
     end
 
     unresolved_cites = []
-    valid = valid_bib_keys
+    valid            = valid_bib_keys
     rewritten = rewritten.gsub(CITE_CMD_RE) do
-      cmd, opt, keys = Regexp.last_match(1), Regexp.last_match(2), Regexp.last_match(3)
+      cmd = Regexp.last_match(1)
+      opt = Regexp.last_match(2)
+      keys = Regexp.last_match(3)
       key_list      = keys.split(",").map(&:strip)
       known         = key_list.select { |k| valid.include?(k) }
       unknown       = key_list - known
@@ -826,7 +911,7 @@ class Builder
       end
       body << "\n\\newpage\n" if row.type == "checklist"
       body << if row.type == "bibliography"
-                "\n\\bibliography{refs}\n\n"
+                "\n\\bibliography{#{@manifest_stem}.references}\n\n"
               else
                 render_segment(row)
               end
@@ -895,8 +980,8 @@ class Builder
   # finish. The whole `\cite{key}` form is already raw-TeX passthrough policy
   # (AUTHORING §4); the postnote bracket is a natural extension of that
   # passthrough scope.
-  CITE_PREFIX_RE = /\\cite(?:t|p|alt|alp|author|year)?[*]?/.freeze
-  CITE_ARG_RE    = /(#{CITE_PREFIX_RE})\[([^\]\n]*)\]/.freeze
+  CITE_PREFIX_RE = /\\cite(?:t|p|alt|alp|author|year)?[*]?/
+  CITE_ARG_RE    = /(#{CITE_PREFIX_RE})\[([^\]\n]*)\]/
 
   def mask_cite_postnotes(text)
     @cite_postnote_stash ||= []
@@ -912,7 +997,7 @@ class Builder
   def unmask_cite_postnotes(tex)
     return tex unless @cite_postnote_stash
 
-    tex.gsub(/#{Regexp.escape(CITE_ARG_OPEN)}(\d+)#{Regexp.escape(CITE_ARG_CLOSE)}/) do
+    tex.gsub(/#{Regexp.escape(CITE_ARG_OPEN)}(\d+)#{Regexp.escape(CITE_ARG_CLOSE)}/o) do
       @cite_postnote_stash[Regexp.last_match(1).to_i] || ""
     end
   end
@@ -1072,15 +1157,19 @@ class Builder
   end
 
   def compile_pdf(tex_path)
+    # TEXINPUTS includes COMMON_DIR (sty + template), the paper-dir (segment-
+    # relative resources like figures/), and the build-dir itself (so lualatex
+    # finds the rendered .tex it's about to compile). BIBINPUTS points at
+    # the build-dir where the auto-emitted <stem>.references.bib lives.
     env = {
-      "TEXINPUTS" => "#{COMMON_DIR}:#{@paper_dir}:",
-      "BIBINPUTS" => "#{@paper_dir}:"
+      "TEXINPUTS" => "#{COMMON_DIR}:#{@paper_dir}:#{@build_dir}:",
+      "BIBINPUTS" => "#{@build_dir}:#{@paper_dir}:"
     }
     lualatex_cmd = [
       "lualatex",
       "-interaction=nonstopmode",
       "-halt-on-error",
-      "-output-directory=#{@out_dir}",
+      "-output-directory=#{@build_dir}",
       tex_path.to_s
     ]
     bibtex_cmd = ["bibtex", tex_path.basename(".tex").to_s]
@@ -1094,7 +1183,7 @@ class Builder
   end
 
   def run_compile_step(env, cmd, label, allow_fail: false)
-    out, status = Open3.capture2e(env, *cmd, chdir: @out_dir.to_s)
+    out, status = Open3.capture2e(env, *cmd, chdir: @build_dir.to_s)
     return if status.success? || allow_fail
 
     tail = out.lines.last(40).join
@@ -1119,15 +1208,140 @@ class Kramdown::Document
 end
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CLI entry
+# CLI dispatcher
+#
+# Resolves args into a list of (paper_dir, manifest_stem) pairs, runs each in
+# its own try/rescue when more than one pair is in flight (failure isolation),
+# and exits nonzero with a summary if any pair failed. Single-pair invocations
+# propagate errors normally.
 # ─────────────────────────────────────────────────────────────────────────────
 
-if $PROGRAM_NAME == __FILE__
-  if ARGV.empty?
-    warn "usage: bin/build <paper-dir> [manifest-stem]"
+class CLI
+  USAGE = <<~USAGE.freeze
+    bin/build — assemble a paper from an OUT.*.md manifest into a NeurIPS PDF.
+
+    Usage:
+      bin/build                                # cwd-aware default (cwd must be a paper-dir)
+      bin/build <paper-dir>                    # all OUT.*.md manifests in <paper-dir>
+      bin/build <paper-dir> <manifest-stem>    # specific manifest in <paper-dir>
+      bin/build <manifest-stem>                # specific manifest in cwd
+      bin/build --all                          # every paper-dir under umbrella, every manifest
+
+    Output goes to <paper>/.build/<stem>/<stem>.pdf and is copied to
+    <paper>/<stem>.pdf on success (with prior PDF moved to <stem>.prior.pdf).
+  USAGE
+
+  def self.run(argv) = new.dispatch(argv)
+
+  def dispatch(argv)
+    pairs =
+      case argv.length
+      when 0 then resolve_no_args
+      when 1 then resolve_one_arg(argv[0])
+      when 2 then [[resolve_paper_dir(argv[0]), argv[1]]]
+      else        usage_and_exit("too many arguments")
+      end
+
+    abort_with_usage("no manifests resolved") if pairs.empty?
+    run_pairs(pairs)
+  end
+
+  private
+
+  # Treat any directory containing a `meta.md` AND at least one `OUT.*.md` as a
+  # paper-dir. The heuristic is intentional: it lets cwd-detection work without
+  # a hardcoded paper-dir list (so adding a 04-* paper later doesn't require a
+  # build-side edit), and it correctly excludes the umbrella root (which has
+  # neither meta.md nor OUT.*.md).
+  def paper_dir?(path)
+    return false unless path&.directory?
+
+    (path / "meta.md").exist? && !path.glob("OUT.*.md").empty?
+  end
+
+  def manifests_in(paper_dir)
+    paper_dir.glob("OUT.*.md").sort.map { |p| p.basename.to_s.delete_prefix("OUT.").delete_suffix(".md") }
+  end
+
+  def resolve_no_args
+    cwd = Pathname.pwd.expand_path
+    return manifests_in(cwd).map { |s| [cwd, s] } if paper_dir?(cwd)
+
+    candidates = ROOT.glob("0?-*").select { |p| paper_dir?(p) }.sort
+    listing    = candidates.map { |c| c.relative_path_from(ROOT) }.join("\n  ")
+    abort_with_usage("cwd is not a paper-dir (no meta.md / OUT.*.md). Candidate paper-dirs:\n  #{listing}")
+  end
+
+  def resolve_one_arg(arg)
+    return all_pairs if arg == "--all"
+
+    candidate_dir = Pathname.new(arg).expand_path
+    candidate_dir = ROOT / arg unless candidate_dir.directory?
+    return manifests_in(candidate_dir).map { |s| [candidate_dir, s] } if paper_dir?(candidate_dir)
+
+    cwd = Pathname.pwd.expand_path
+    if paper_dir?(cwd) && (cwd / "OUT.#{arg}.md").exist?
+      [[cwd, arg]]
+    else
+      abort_with_usage("`#{arg}` is neither a paper-dir nor a manifest stem in cwd #{cwd.relative_path_from(ROOT)}")
+    end
+  end
+
+  def resolve_paper_dir(arg)
+    candidate = Pathname.new(arg).expand_path
+    candidate = ROOT / arg unless candidate.directory?
+    abort_with_usage("not a paper-dir: #{arg}") unless paper_dir?(candidate)
+
+    candidate
+  end
+
+  def all_pairs = ROOT.glob("0?-*").select { |p| paper_dir?(p) }.sort.flat_map { |pd| manifests_in(pd).map { |s| [pd, s] } }
+
+  def run_pairs(pairs)
+    isolate   = pairs.size > 1
+    successes = []
+    failures  = []
+
+    pairs.each do |paper_dir, stem|
+      label = "#{paper_dir.relative_path_from(ROOT)}/#{stem}"
+      if isolate
+        begin
+          Builder.new(paper_dir, stem).call
+          successes << label
+        rescue StandardError => e
+          warn "✗ #{label}: #{e.message.lines.first&.strip}"
+          failures << [label, e]
+        end
+      else
+        Builder.new(paper_dir, stem).call
+        successes << label
+      end
+    end
+
+    print_summary(successes, failures) if isolate
+    exit 1 if failures.any?
+  end
+
+  def print_summary(successes, failures)
+    puts
+    puts "── Build summary ──"
+    successes.each { |s| puts "  ✓ #{s}" }
+    failures.each  { |label, e| puts "  ✗ #{label}: #{e.message.lines.first&.strip}" }
+    puts "  (#{successes.size} passed, #{failures.size} failed)"
+  end
+
+  def usage_and_exit(msg = nil)
+    warn msg if msg
+    warn USAGE
     exit 1
   end
-  paper_dir     = ARGV[0]
-  manifest_stem = ARGV[1] || "test"
-  Builder.new(paper_dir, manifest_stem).call
+
+  def abort_with_usage(msg)
+    warn msg
+    warn
+    warn USAGE
+    exit 1
+  end
 end
+
+CLI.run(ARGV) if $PROGRAM_NAME == __FILE__
