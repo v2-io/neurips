@@ -35,12 +35,12 @@ The build pipeline's lint pass should warn on (or convert / strip) authoring pat
   3. ✓ Custom `\citet` redefinition so narrative cites emit `Author Year⁽N⁾` rather than natbib-`super` default `Author [N]` (~3-line preamble patch; verify against current natbib release). [done]
   4. ✓ **Source-form migration** `bin/migrate-cites <paper-dir>`: scans `<paper-dir>/src/**/*.md` for parenthetical `[Author Year]` and narrative `Author [Year]` patterns, matches against `refs/entries/*.yml` by first-author-surname + year, prints a per-file report (matched / ambiguous / missing); `--apply` rewrites in place. Handles `et al.`, hyphenated multi-author, page references (`[Author Year, p. 247]` → `\cite[p. 247]{key}`); multi-year (`[Friston 2013, 2019]`) and complex multi-cite (`[A Year; B Year]`) are intentionally skipped by the regex so a human can pick the right form. *Signed off 2026-05-05 — ready for use by per-paper migration agents.*
   5. Author-side convention is captured in AUTHORING.md §2.3 (already updated 2026-05-05).
-  6. Verify rendering visually on `00-test-paper` before per-paper migration. Side-by-side with the current author-year render to confirm the math-collision concern is mitigated by brackets.
-  7. After per-paper migration succeeds, archive `REFS-AND-CITATIONS.md` to `_archive/` (`git mv`).
+  6. ✓ Visually verified on `00-test-paper` 2026-05-05; bracketed-superscript form mitigates math-collision per `REFS-AND-CITATIONS.md` Phase A acceptance.
+  7. ✓ Per-paper migration succeeded across all three papers; `REFS-AND-CITATIONS.md` archived 2026-05-06.
 
-- [ ] **C2. References section migration** — transition from the manual `[1] Author...` list to natbib + `refs.bib`. Build emits `\bibliographystyle{plainnat}\bibliography{refs}` automatically when `## References` segment is empty / opt-in flag set.
+- [x] **C2. References section migration — done.** Build auto-emits the per-paper bib via `bin/refs emit` into `.build/<stem>/<stem>.references.bib` (build-refactor commit `17cb12e`); manifest's `Bibliography`-typed row triggers `\bibliography{<stem>.references}` injection. Manual reference lists deprecated; AUTHORING §1.11 updated.
 
-- [ ] **C3. Numeric vs author-year citation rendering** — one-line natbib option (`\PassOptionsToPackage{numbers,sort&compress}{natbib}`) reclaims ~1–3 pp on dense papers; per-paper choice via meta.md frontmatter (`citation_style: numeric` vs `author-year`).
+- [ ] **C3. Numeric vs author-year citation rendering** — speculative. Current super-numeric form working across all three papers; defer per-paper override unless a paper actually wants author-year rendering. One-line `\PassOptionsToPackage` change behind a `meta.md` frontmatter flag when needed.
 
 - [x] **C4.** Anchored equations: `$$ ... $$ ^eq-name` rewritten to `\begin{equation}\label{}...\end{equation}` (or `\begin{align}\label{}...\end{align}` for `aligned` content); `eq-` prefixed cross-refs route to `\eqref{}` instead of `\Cref{}` — done `1468878`.
 
@@ -60,7 +60,7 @@ These existed in the old workspace as separate scripts; some may be subsumed by 
 
 - [ ] **E4. Supplementary-ZIP builder** (old `bin/build-supplementary`). Per-paper ZIP < 100 MB for OpenReview supplementary upload (figures, code, raw-data, extended appendices not in the 9-pp main).
 
-- [ ] **E5. Cite-audit / refs-to-bib** (old `bin/cite-audit` + `bin/refs-to-bib`). Read-only coverage audit (inline cites ↔ refs.bib) and stub-bib harvester from `## References` markdown. Useful for Phase B citation work; may also fold into the build's lint pass. **Largely subsumed by `bin/refs`** — `bin/refs cited` does the coverage audit, `bin/refs lint` does the missing-key check, `bin/refs emit` does the bib generation. Stub-bib harvester from `## References` markdown remains useful for one-shot legacy migrations.
+- [x] **E5. Cite-audit / refs-to-bib — subsumed by `bin/refs`.** `bin/refs cited` does coverage audit; `bin/refs lint` does missing-key check; `bin/refs emit` does bib generation (build-pipeline auto-runs it). Stub-bib harvester from manual `## References` markdown is no longer needed (manual reference lists deprecated per C2). The CitationScanner regex bug was fixed in `d9561d2` so `\citealt` / `\citealp` / `\citeauthor` / `\citeyear` are now caught alongside `\cite` / `\citet` / `\citep`.
 
 ## F. Citation backend — `bin/refs` (landed)
 
@@ -75,7 +75,7 @@ Open follow-ups (deferred — backend is sufficient for the per-paper agents to 
 
 - [x] **F1. Build-pipeline integration.** Done — `bin/build` calls `bin/refs emit <paper> --output .build/<stem>/<stem>.references.bib` at step 3 of every (paper, manifest) compile, and reads bib-keys from the freshly-emitted file. Closes the stale-bib failure mode that bit at `~14:50` 2026-05-06 (lie-sullivan-teckentrup transient). Companion changes: `bin/refs emit` extended with `--output <path>` override at `cb64428`; full build refactor to `.build/<stem>/` layout at `17cb12e`. The build no longer reads or writes `<paper>/refs.bib`; orphan `refs.bib` files in submodules are no-ops that per-paper agents can clean up at their leisure. See `SPEC-build-refactor.md` for the full design.
 - [ ] **F2. DOI auto-fetch** (`bin/refs fetch <doi>`). Phase 0 is paste-BibTeX-on-stdin / scaffold-and-fill. CrossRef / DataCite would let an agent verify-by-fetching.
-- [ ] **F3. Duplicate-DOI detection.** Two entries with different keys but the same DOI should surface in `bin/refs lint`. Today each is treated independently.
+- [x] **F3. Duplicate-DOI detection — landed (commit pending).** `bin/refs lint` now groups entries by DOI (case-insensitive, whitespace-stripped) and surfaces any DOI that appears on >1 key as `DUPDOI <doi>: same DOI on multiple entries: <key1>, <key2>, ...`. Verified: current database (170 entries) has no duplicate DOIs.
 - [ ] **F4. PDF-claim anchoring.** `bin/refs pdf <key> <path>` registers a PDF; nothing yet inspects content. A future `bin/refs grep <key> <claim>` would let the `claim-supported` criterion be backed by literal text-match anchors rather than free-form notes.
 - [ ] **F5. Re-verification of imported 164 entries.** The legacy bib's verification status (from `~/src/neurips2026/common/citation-verification-report.md`) is currently *unverified* in the new system. Per-paper agents will surface verification events as they encounter each entry; a one-shot import from the verification report is also possible (would attribute events to "joseph + bib-verification subagent, 2026-05-04").
 

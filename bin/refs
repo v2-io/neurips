@@ -781,6 +781,8 @@ class CLI
       entry.schema_errors.each    { |e| findings << "SCHEMA #{entry.key}: #{e}" }
     end
 
+    findings.concat(duplicate_doi_findings)
+
     paper_dirs.each do |pd|
       next unless pd.directory?
 
@@ -801,6 +803,23 @@ class CLI
       puts
       puts "(#{findings.size} findings)"
       exit 1 if ENV["REFS_LINT_STRICT"]
+    end
+  end
+
+  # Duplicate-DOI detection. Two entries with different keys but the same
+  # DOI mean the bib database has accidentally registered the same paper
+  # twice — a real correctness problem (e.g., during one-shot legacy
+  # imports where the same paper was scraped from two contexts under
+  # different keys). Group entries by DOI; surface any DOI on >1 key.
+  def duplicate_doi_findings
+    doi_groups = Hash.new { |h, k| h[k] = [] }
+    Entry.all.each do |e|
+      next unless e.doi && !e.doi.to_s.strip.empty?
+
+      doi_groups[e.doi.to_s.downcase.strip] << e.key
+    end
+    doi_groups.filter_map do |doi, keys|
+      "DUPDOI #{doi}: same DOI on multiple entries: #{keys.sort.join(', ')}" if keys.size > 1
     end
   end
 
