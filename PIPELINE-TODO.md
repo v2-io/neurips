@@ -29,7 +29,7 @@ The build pipeline's lint pass should warn on (or convert / strip) authoring pat
 
 ## C. Phase B converter work
 
-- [ ] **C1. Citation rendering — bracketed superscript via natbib.** Decision per `REFS-AND-CITATIONS.md`. Implementation steps:
+- [x] **C1. Citation rendering — bracketed superscript via natbib — done.** Decision per `REFS-AND-CITATIONS.md` (now archived). All 7 implementation steps complete. Active across all three papers under super-numeric form. Implementation steps:
   1. ✓ Add `\PassOptionsToPackage{numbers,super,sort&compress}{natbib}` to the build's preamble (`bin/build`'s `PREAMBLE_ADDITIONS` constant, or factor out to `common/preamble.tex` if the constant grows). [done — commit `c64813c`]
   2. ✓ Add `\bibliographystyle{unsrtnat}` (citation order) + `\bibliography{refs}` directives at the end of the body. [done]
   3. ✓ Custom `\citet` redefinition so narrative cites emit `Author Year⁽N⁾` rather than natbib-`super` default `Author [N]` (~3-line preamble patch; verify against current natbib release). [done]
@@ -640,3 +640,23 @@ CITE_RE = /\\cite(?:t|p|alt|alp|author|year|text)?\*?\s*(?:\[[^\]]*\])?\s*(?:\[[
 **Severity.** Low-impact while draft-mode fallback masks it (PDF still builds with `[?]` placeholders), but it's an asymmetry between the build's cite resolution and the scanner's cite detection that will keep biting per-paper agents until fixed. Three of paper 3's currently-flagged "unresolved" cites are actually this bug, not real missing entries.
 
 **Status:** RESOLVED-IN-`d9561d2`. Took the agent's suggested replacement regex verbatim (it was right): `CITE_RE = /\\cite(?:t|p|alt|alp|author|year|text)?\*?\s*(?:\[[^\]]*\])?\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/` — covers all natbib variants + starred forms + two-optional-arg form. Verified end-to-end on 03-llm-hallucinate-bound: `bin/refs cited 03-llm-hallucinate-bound` now sees `tsybakov-2009-nonparametric` (cited via `\citealt[Lemma 2.4]` in src/re/D-track2-companions.md) and `ay-2017-information` (cited via `\citealt[Theorem 5.1]` in src/re/E-proofs.md); they're now in the emitted bib and resolve correctly at compile time. 03's unresolved-cite list dropped from 3 to 1 — only `lie-sullivan-teckentrup-2017` remains as a genuine database gap (separately flagged as a missing-entry in 03's TODO).
+
+### [01-tragedy-confident-agent] Manifest stem renamed `neurips-2026-paper` → `confident-agent-NeurIPS-2026` — flagged 2026-05-06 by 01-agent
+
+**Symptom:** none active (renamed inside submodule, build still works because `bin/build` globs `OUT.*.md`). Filing as a heads-up so umbrella-side defaults / docs can update at your discretion.
+
+**Context:** Joseph asked me to give the paper a distinct concept-named manifest stem rather than the generic `neurips-2026-paper`. Renamed `OUT.neurips-2026-paper.md` → `OUT.confident-agent-NeurIPS-2026.md` in `01-tragedy-confident-agent/`; rebuilt; committed; pushed. The other two papers' stems are unchanged.
+
+**Ask:** four umbrella-side touchpoints reference the old stem and may want to update:
+
+1. `bin/page-budget` — `manifest = "neurips-2026-paper"` default at line 251 (and the `--manifest STEM` help text at 259). With my rename, calling `bin/page-budget 01-tragedy-confident-agent` (no `--manifest`) won't find my manifest. Options: (a) drop the default and require `--manifest`, (b) auto-discover (single `OUT.*.md` excluding `review` / common manifests), (c) leave default for #2 / #3 and document the per-paper override. Your call.
+
+2. `AUTHORING.md` references `OUT.neurips-2026-paper.md` as a canonical example in §7.2 (lines 510, 536, 591) and §7.1 (line 368). If concept-named stems are the new convention across all three papers, the doc convention shifts to `OUT.<concept-slug>-NeurIPS-2026.md`. If only mine renames, the doc can leave the example as-is.
+
+3. `../README.md` (umbrella) line 3 has `OUT.neurips-2026-paper.md` as an example.
+
+4. `MIGRATE-TODO.md` line 13 + 24, `SPEC-build-refactor.md` lines 163–165 — these are historical / spec docs; touch as makes sense.
+
+If only my paper renames (Joseph's choice for #1, while #2 and #3 keep their stems), then #1 above is the only behaviorally significant item — page-budget default works fine for the others. If concept-named stems are the new umbrella convention, all four want a sweep.
+
+**Status:** OPEN
