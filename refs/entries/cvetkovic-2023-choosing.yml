@@ -1,12 +1,16 @@
 ---
-title: Choosing Observation Operators to Mitigate Model Error in Bayesian Inverse
-  Problems
-year: 2023
-publisher: SIAM/ASA Journal on Uncertainty Quantification
+title: Choosing Observation Operators to Mitigate Model Error in {Bayesian} Inverse Problems
+journal: SIAM/ASA Journal on Uncertainty Quantification
+volume: '12'
+number: '3'
+pages: 723--758
+year: 2024
+doi: 10.1137/23M1602140
+note: arXiv 2301.04863 (2023)
 key: cvetkovic-2023-choosing
-type: book
+type: article
 authors:
-- Cvetković, N
-- Lie, H. C
-- Bansal, H
-- Veroy, K
+- Cvetković, Nada
+- Lie, Han Cheng
+- Bansal, Harshit
+- Veroy, Karen

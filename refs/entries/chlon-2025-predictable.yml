@@ -1,11 +1,12 @@
 ---
 title: 'Predictable Compression Failures: Why Language Models Actually Hallucinate'
 year: 2025
-journal: arXiv preprint
-volume: arXiv:2509.11208
+eprint: 2509.11208v1
+archiveprefix: arXiv
+note: 'v1 posted 2025-09-14; substantially retitled and expanded in v2 (Feb 2026, 4 authors). Cite pins to v1 for the QMV reading used in §F.'
 key: chlon-2025-predictable
-type: article
+type: misc
 authors:
-- Chlon, L
-- Karim, A
-- Chlon, M
+- Chlon, Leon
+- Karim, Ahmed
+- Chlon, Maggie

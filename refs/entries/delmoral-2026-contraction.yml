@@ -1,8 +1,10 @@
 ---
-title: A contraction theory for Sinkhorn and Schrödinger bridges via log-Sobolev inequalities
-year: 2026
-booktitle: Stochastic Analysis and Applications
+title: A contraction theory for {Sinkhorn} and {Schrödinger} bridges via log-{Sobolev} inequalities
+year: 2025
+eprint: '2503.15963'
+archiveprefix: arXiv
+note: arXiv preprint; v6 (Jan 2026) most current.
 key: delmoral-2026-contraction
-type: inproceedings
+type: misc
 authors:
-- Del Moral, P
+- Del Moral, Pierre
