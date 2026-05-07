@@ -1,0 +1,1 @@
+- [Triage frame quietly skips strengthening](feedback_triage_skips_strengthening.md) — When processing multi-finding audit triage, the "judge each cleanly and queue" frame defaults to fast-categorize and skips the substantive math attempt strengthen-before-soften requires. The triage frame itself is the interrupt to catch.
