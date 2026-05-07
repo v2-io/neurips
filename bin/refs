@@ -375,7 +375,16 @@ end
 # ─────────────────────────────────────────────────────────────────────────────
 
 class CitationScanner
-  CITE_RE = /\\cite[tp]?\*?\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/
+  # Match all natbib citation commands: \cite, \citet, \citep, \citealt,
+  # \citealp, \citeauthor, \citeyear, \citetext, plus starred variants and
+  # the two-optional-arg form (\citealt[pre][post]{key}). Earlier version
+  # only matched \cite / \citet / \citep, missing \citealt / \citealp /
+  # \citeauthor / \citeyear — which made `bin/refs cited` underreport
+  # citations and `bin/refs emit` drop those keys from the emitted bib.
+  # Surfaced 2026-05-06 as 03-llm-hallucinate-bound's `tsybakov-2009-nonparametric`
+  # and `ay-2017-information` showing as "unresolved" in builds despite being
+  # present in `refs/entries/`.
+  CITE_RE = /\\cite(?:t|p|alt|alp|author|year|text)?\*?\s*(?:\[[^\]]*\])?\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/
 
   def initialize(paper_dir) = @paper_dir = Pathname.new(paper_dir).expand_path
 

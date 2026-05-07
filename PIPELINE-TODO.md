@@ -606,3 +606,37 @@ This is structurally analogous to the shared-counter bug previously fixed for th
 **Workaround applied.** None — the prose is AUTHORING-conformant. Logged in `01-tragedy-confident-agent/TODO.md`'s drive-by section as a known rendering quirk pending pipeline fix.
 
 **Status:** RESOLVED-IN-`52fccf2`. Took the canonical cleveref-with-appendix recipe rather than aliascnt. The `\appendix` injection in `assemble_body` now emits `\appendix\n\crefalias{section}{appendix}\n\crefalias{subsection}{subappendix}` together — `\crefalias` tells cleveref to treat section labels declared from this point onward as type `appendix`, and subsection labels as type `subappendix`. PREAMBLE_ADDITIONS gained matching `\crefname{subappendix}{Appendix}{Appendices}` + `\Crefname{subappendix}{Appendix}{Appendices}` (singular/plural same as the parent appendix type — there's no separate "subappendix" word in English). Verified on 01-tragedy-confident-agent's neurips-2026-paper: cross-refs to appendix top-level sections now render as "Appendix F", "Appendix G", "Appendix H", "Appendix I", and subsection refs render as "Appendix A.5", "Appendix F.4", "Appendix G.2", etc. — all the prior "Section X" / "Section X.Y" appendix-region renderings are gone. Same shape as the aliascnt theorem-likes fix at `1352759`, slightly different mechanism (cleveref's `\crefalias` is the right tool for cross-referencing-type swap, while `aliascnt` was right for shared-counter type erasure).
+
+### [bin/refs] CitationScanner regex misses \citealt / \citealp / \citeauthor / \citeyear — flagged 2026-05-06 by paper-3 agent
+
+**Symptom.** Build reports `unresolved cite-key: tsybakov-2009-nonparametric` and `unresolved cite-key: ay-2017-information` for `03-llm-hallucinate-bound/re-paper`, even though `refs/entries/tsybakov-2009-nonparametric.yml` and `refs/entries/ay-2017-information.yml` both exist in the umbrella database.
+
+**Reproducer.**
+
+```
+cd 03-llm-hallucinate-bound
+bin/refs cited 03-llm-hallucinate-bound | grep -E "tsybakov|ay-2017"
+# returns empty — bin/refs doesn't see them as cited
+bin/build re-paper
+# unresolved cite-key warnings, [?] placeholders in PDF
+```
+
+The two keys are cited in src/re/ via `\citealt[Lemma 2.4]{tsybakov-2009-nonparametric}` and `\citealt[Theorem 5.1]{ay-2017-information}` — natbib `\citealt` form. Other natbib forms in the same source (`\citet`, `\citep`, `\cite`) resolve correctly.
+
+**Root cause.** `bin/refs:378` defines `CITE_RE = /\\cite[tp]?\*?\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/`, which matches `\cite`, `\citet`, `\citep`, plus starred variants — but not `\citealt`, `\citealp`, `\citeauthor`, `\citeyear`, `\citetext`. AUTHORING and the build's own unresolved-cite resolver (per the `0c2a4f8` resolved-fix entry above in this file) both list `\citealt` etc. as supported, so the asymmetry is between scanner-side (`bin/refs`'s `CitationScanner`) and build-side.
+
+**Effect.** Per-paper agents who use `\citealt` get false-positive "unresolved" warnings on keys that ARE in the umbrella database. `bin/refs emit` then filters those keys out of the emitted bib (since the scanner reports them uncited) — even though the build's TeX source `\cite`s them. Build's draft-mode-when-unresolved fallback masks the consequence (`[?\,key]` placeholder in PDF), but the underlying bug means a paper using `\citealt` can't actually resolve those cites without workaround.
+
+**Workaround (per-paper).** Switch `\citealt[opt]{key}` → `\cite[opt]{key}` in source — but this changes citation rendering style (super-natbib `\cite` is a numeric superscript; `\citealt` is "Author Year" inline). Not a content-equivalent substitution.
+
+**Ask.** Extend the regex to cover the rest of natbib's forms. Suggested replacement:
+
+```ruby
+CITE_RE = /\\cite(?:t|p|alt|alp|author|year|text)?\*?\s*(?:\[[^\]]*\])?\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/
+```
+
+(The double optional `[...]` accommodates natbib's two-arg forms like `\citealt[pre][post]{key}`. Tested against the call-site forms in 03-llm-hallucinate-bound src/re/.)
+
+**Severity.** Low-impact while draft-mode fallback masks it (PDF still builds with `[?]` placeholders), but it's an asymmetry between the build's cite resolution and the scanner's cite detection that will keep biting per-paper agents until fixed. Three of paper 3's currently-flagged "unresolved" cites are actually this bug, not real missing entries.
+
+**Status:** RESOLVED-IN-(commit pending). Took the agent's suggested replacement regex verbatim (it was right): `CITE_RE = /\\cite(?:t|p|alt|alp|author|year|text)?\*?\s*(?:\[[^\]]*\])?\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}/` — covers all natbib variants + starred forms + two-optional-arg form. Verified end-to-end on 03-llm-hallucinate-bound: `bin/refs cited 03-llm-hallucinate-bound` now sees `tsybakov-2009-nonparametric` (cited via `\citealt[Lemma 2.4]` in src/re/D-track2-companions.md) and `ay-2017-information` (cited via `\citealt[Theorem 5.1]` in src/re/E-proofs.md); they're now in the emitted bib and resolve correctly at compile time. 03's unresolved-cite list dropped from 3 to 1 — only `lie-sullivan-teckentrup-2017` remains as a genuine database gap (separately flagged as a missing-entry in 03's TODO).
