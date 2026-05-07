@@ -39,6 +39,7 @@
 # rendering; the constant is conservative-ish to avoid undercounting bib.
 
 require "optparse"
+require "open3"
 
 ROOT  = Pathname.new(__dir__).parent.expand_path
 LIMIT = 9
@@ -58,7 +59,9 @@ TOC_LINE_RE = /
 
 TocEntry = Struct.new(:kind, :inner, :page, :ref, keyword_init: true) do
   def appendix?    = ref.start_with?("appendix.")
-  def references?  = inner.include?("References") && !inner.include?("References to") # crude — handles `References` heading vs prose
+  # Crude — distinguishes the `References` section heading from prose
+  # references like "References to Strand 1 work".
+  def references?  = inner.include?("References") && !inner.include?("References to")
   def section?     = kind == "section"
 
   def title = inner.sub(/\A\\numberline\s*\{[^}]+\}\s*/, "")
@@ -96,7 +99,45 @@ def count_bibcites(aux_path) = aux_path.each_line.count { |l| l.match?(BIBCITE_R
 # rendering with `unsrtnat`. Conservative-ish (the cost of underestimating bib
 # pages is undercounting main-text-end by a fraction of a page; the cost of
 # overestimating is the opposite). Adjust if real-paper builds drift.
+#
+# Used as fallback only — `references_page_from_pdf` (below) extracts ground
+# truth from the rendered PDF when pdftotext is available, which is more
+# accurate than any entries-per-page heuristic. Real-paper density observed
+# 16-26 entries/page in the 2026-05 sprint, too wide a range for a fixed
+# constant to be reliably accurate.
 BIB_ENTRIES_PER_PAGE = 30
+
+# Match a "References" heading line in pdftotext -layout output. NeurIPS sty
+# renders the body with LaTeX line numbers in the margin, so pdftotext sees
+# "<line-number><spaces>References" rather than "References" alone. Match
+# both forms (with or without the leading line-number marker).
+REFERENCES_LINE_RE = /\A\s*(?:\d+\s+)?References\s*\z/
+
+# Ground-truth the references-start page by parsing the rendered PDF directly.
+# `pdftotext -layout` separates pages with form-feed (`\f`); we split on those
+# and scan each page for a standalone "References" heading. Returns the page
+# number (1-indexed) where References starts, or nil if pdftotext is unavailable
+# or the heading isn't found.
+#
+# This bypasses the entries-per-page heuristic entirely when it works, and
+# falls back to the heuristic on any failure path. The heuristic stays as
+# defense-in-depth for environments without poppler / pdftotext.
+def references_page_from_pdf(pdf_path)
+  return nil unless pdf_path.exist?
+
+  out, status = Open3.capture2("pdftotext", "-layout", pdf_path.to_s, "-")
+  return nil unless status.success?
+
+  out.split("\f").each_with_index do |page_text, i|
+    page_text.each_line do |line|
+      return i + 1 if line.match?(REFERENCES_LINE_RE)
+    end
+  end
+  nil
+rescue Errno::ENOENT
+  # pdftotext not on PATH — fall back to heuristic.
+  nil
+end
 
 # Find the page on which main text ends. Returns [end_page, marker_kind] where
 # marker_kind is one of "appendix" / "references" / "appendix-minus-bib" /
@@ -179,7 +220,14 @@ def report(paper_dir, manifest)
     return
   end
 
+  # T1.5+ refinement: when the marker is the heuristic appendix-minus-bib, try
+  # to ground-truth the references-start page from the rendered PDF. Override
+  # the heuristic with the actual page when pdftotext finds a clean match.
   end_page, marker = result
+  if marker.start_with?("appendix-minus-bib") && (refs_page = references_page_from_pdf(paper_dir / ".build" / manifest / "#{manifest}.pdf"))
+    end_page = refs_page - 1
+    marker   = "references (from PDF, p#{refs_page})"
+  end
   overage = end_page - LIMIT
   status  = overage.positive? ? "OVER" : "OK"
   sign    = overage.positive? ? "+" : ""
