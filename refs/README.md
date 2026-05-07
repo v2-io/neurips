@@ -86,6 +86,7 @@ internal_note: ...                    # optional; AGENT/WORKING metadata — nev
 - Bib keys: `firstauthor-year-shortword` (lowercase, hyphenated). Multi-author entries can extend (`boyd-ghaoui-feron-balakrishnan-1994-lmi`).
 - Pages with en-dash via `--` (BibTeX rendering convention).
 - DOIs without URL prefix.
+- **Title is rendered verbatim** in the bibliography. `bin/refs emit` double-braces the title field (`title = {{...}}`) so BibTeX's title-case styles (`unsrt` / `unsrtnat` lowercase everything past the first letter) treat it as a no-case-change protected group. Store titles in their canonical published case — acronyms (`MDPs`, `RL`, `NeurIPS`, `DOVI`) and proper nouns stay uppercase as written. No need to manually brace-protect inside the YAML title string.
 
 ## Verification — `refs/verifications/<bibkey>/<ts>-<verifier>-<criterion>.md`
 

@@ -191,7 +191,12 @@ class Entry
   def bibtex_fields
     out             = {}
     out["author"]   = authors.join(" and ")
-    out["title"]    = @data["title"]
+    # Double-brace the title so bibtex's title-case styles (unsrt/unsrtnat lowercase
+    # everything past the first letter) treat it as a no-case-change protected group.
+    # YAML stores titles in canonical published case (MDPs / RL / NeurIPS / DOVI etc.) —
+    # rendering verbatim is the desired behavior. Other fields (journal, booktitle,
+    # publisher) aren't case-changed by these styles, so don't need the same wrap.
+    out["title"]    = "{#{@data["title"]}}"
     out["year"]     = @data["year"].to_s
     %w[journal booktitle publisher series volume number pages edition address school institution howpublished
        editor doi url note month chapter organization].each do |f|
