@@ -409,12 +409,35 @@ The build (`bin/build`) takes care of:
 - The right sty file (`common/neurips_2026.sty`, canonical, do not modify) and track options.
 - Preamble setup: `amsmath`, `amssymb`, `amsthm` with theorem / lemma / corollary / proposition / definition / remark environments under a shared counter; `cleveref` with `\Cref` / `\crefname` for the type-aware references; `fontspec` + TeX Gyre Termes for Unicode; `hyperref{hidelinks}` to suppress link boxes; natbib `super,sort&compress` with `\citet` redefined for the `Author Year [N]` form.
 - `\appendix` / `\newpage` injection from manifest types.
+- Auto-emit of the per-paper bib via `bin/refs emit` before each compile (see "Output layout" below).
 - bibtex / lualatex compile passes.
+- Page-budget report on success (main-text page count vs the 9-pp limit, with bibliography sandwiched between body and appendix subtracted out heuristically).
 - Anonymization for default builds (author block suppressed automatically).
+
+**Output layout.** Per `(paper-dir, manifest-stem)` pair, the build writes:
+
+- `<paper>/.build/<stem>/` — gitignore-worthy. Holds the rendered `.tex`, the auto-emitted `<stem>.references.bib`, lualatex intermediates, and the canonical `<stem>.pdf`.
+- `<paper>/<stem>.pdf` — copy of the canonical PDF on success. Author choice to track or gitignore.
+- `<paper>/<stem>.prior.pdf` — gitignore-worthy. Previous successful PDF, snapshotted at the start of each build so a failed build leaves the last-known-good visible.
+- `<paper>/<stem>.extracted.bib` — repo-visibility snapshot of the emitted bib. The `extracted` naming is explicit-on-purpose so authors don't hand-edit it; canonical edits go through `bin/refs add` / `refs/entries/<key>.yml`. Recommended to track.
+
+The build no longer reads or writes `<paper>/refs.bib` or `<paper>/out/`. Both are orphans of the refactor and can be removed at any time.
+
+**CLI invocations.**
+
+```
+bin/build                                # cwd-aware (cwd is paper-dir → all manifests)
+bin/build <paper-dir>                    # all OUT.*.md manifests in <paper-dir>
+bin/build <manifest-stem>                # one stem in cwd (cwd must be paper-dir)
+bin/build <paper-dir> <manifest-stem>    # explicit pair
+bin/build --all                          # every paper-dir, every manifest
+```
+
+When more than one pair is in flight, each runs in its own try/rescue — a failure in one doesn't poison the rest. A run with any failure exits nonzero with a summary listing successes and failures.
 
 If you need something the preamble doesn't have — a missing package, a new theorem-style environment (`\newtheorem{conjecture}[theorem]{Conjecture}` for example), a `\crefname` entry for some custom env, a font weight, a math symbol from an exotic package, anything — **ask Joseph and the build-pipeline owner will add it to the preamble.** Don't try to inject preamble bits from segment source; the segment-author / build-owner separation matters for cross-paper consistency.
 
-Same channel for build issues — if something compiles wrong or renders weirdly, `MIGRATE-TODO.md` flag at the umbrella level (or a per-paper `TODO.md` flag for paper-specific weirdness).
+Same channel for build issues — if something compiles wrong or renders weirdly, `PIPELINE-TODO.md ## Inbox` (atomic-append flag, AGENTS §5.1) is the canonical channel; or a per-paper `TODO.md` flag for paper-specific weirdness.
 
 ---
 

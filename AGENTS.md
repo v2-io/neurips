@@ -16,7 +16,7 @@ You're a fresh agent on this project. Read in this order:
 
 Per-paper / migration agents work in a submodule (`~/src/neurips/0N-{slug}/`) backed by its own GitHub repo; commit + push there as you go. Pipeline tooling (`bin/build`, `bin/refs`) lives at the umbrella and takes the paper-dir as argument; the bib database in `refs/` is umbrella-shared across all three papers. The umbrella owner advances the submodule pointer when ready — not your concern.
 
-Start work. Build as you go (`bin/build <paper-dir>`; `bundle exec rubocop` for Ruby edits). Commit + push per milestone.
+Start work. Build as you go (`bin/build` from inside your paper-dir, or `bin/build <paper-dir> <manifest-stem>` from the umbrella; `bundle exec rubocop` for Ruby edits). Commit + push per milestone.
 
 ---
 

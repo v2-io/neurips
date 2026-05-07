@@ -154,14 +154,23 @@ bin/refs unverify burda-edwards-storkey-klimov-2018-rnd bib-fields \
 
 ### Per-paper bib emission (build-pipeline integration)
 
-`bin/build` reads `<paper-dir>/refs.bib`. `bin/refs emit` regenerates that file scoped to the keys actually cited in the paper:
+`bin/build` calls `bin/refs emit` automatically before each compile, with a path override that lands the emitted bib inside the build directory:
+
+```bash
+bin/refs emit 01-tragedy-confident-agent --output 01-tragedy-confident-agent/.build/full-paper/full-paper.references.bib
+# (this is what `bin/build` invokes internally)
+```
+
+The build copies the result to `<paper-dir>/<stem>.extracted.bib` for repo-visibility — the `extracted` naming is explicit-on-purpose so authors don't hand-edit it. Canonical edits go through `bin/refs add` / `refs/entries/<key>.yml`; the next build re-emits.
+
+Standalone use (no path override) writes the legacy `<paper-dir>/refs.bib` location:
 
 ```bash
 bin/refs emit 01-tragedy-confident-agent
 # wrote 01-tragedy-confident-agent/refs.bib  (47 entries; 0 missing)
 ```
 
-Run `emit` whenever entries change (or wire it into `bin/build`'s preamble; see PIPELINE-TODO §C1).
+That form is preserved for ad-hoc inspection but the build pipeline doesn't read `<paper-dir>/refs.bib` anymore.
 
 ### Linting before submission
 
