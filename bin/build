@@ -8,6 +8,8 @@
 #   bin/build <paper-dir> <manifest-stem>    # specific manifest in <paper-dir>
 #   bin/build <manifest-stem>                # specific manifest in cwd (cwd must be a paper-dir)
 #   bin/build --all                          # every paper-dir under umbrella, every manifest
+#   bin/build --preprint                     # non-anon arXiv-style render (real authors, "Preprint" footer)
+#   bin/build --final                        # camera-ready render (real authors, no preprint footer)
 #
 #   <paper-dir>      e.g., 00-test-paper, 01-tragedy-confident-agent
 #   <manifest-stem>  reads OUT.<stem>.md (e.g., `full-paper`, `neurips-2026-paper`).
@@ -65,6 +67,17 @@ ROOT       = Pathname.new(__dir__).parent.expand_path
 COMMON_DIR = ROOT / "common"
 TEMPLATE   = COMMON_DIR / "neurips_2026.tex"
 REFS_BIN   = ROOT / "bin" / "refs"
+
+# --preprint flips the neurips_2026 package option from default (double-blind:
+# "Anonymous Author(s)", line numbers) to [preprint] (real authors from
+# meta.md, no line numbers, "Preprint. Work in progress." footer). Useful for
+# arXiv-style non-anonymous renders without using [final] (which the NeurIPS
+# template warns is reserved for accepted papers). Spliced into the template
+# at the same point as the citation/hyperref pre-sty options. (--preprint and
+# --final are mutually exclusive; if both are set, --final wins, matching the
+# sty's own precedence.)
+PREPRINT = !!ARGV.delete("--preprint")
+FINAL    = !!ARGV.delete("--final")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Custom kramdown parser — extracts callout markers and header anchors at
@@ -1119,8 +1132,15 @@ class Builder
     # normal hyperref behavior.
     pre_sty_options = String.new(CITATION_OPTIONS)
     pre_sty_options << "\\PassOptionsToPackage{draft}{hyperref}\n" if @has_unresolved_refs
+    # Package-option override for --preprint / --final (see top-of-file comment).
+    # The default (no option) is double-blind anonymous-author mode.
+    sty_option =
+      if FINAL    then "[final]"
+      elsif PREPRINT then "[preprint]"
+      else            ""
+      end
     template = template.sub("\\usepackage{neurips_2026}") do
-      "#{pre_sty_options}\\usepackage{neurips_2026}"
+      "#{pre_sty_options}\\usepackage#{sty_option}{neurips_2026}"
     end
 
     # Other preamble additions (theorem envs + cleveref + hidelinks + \citet redef)
@@ -1226,6 +1246,8 @@ class CLI
       bin/build <paper-dir> <manifest-stem>    # specific manifest in <paper-dir>
       bin/build <manifest-stem>                # specific manifest in cwd
       bin/build --all                          # every paper-dir under umbrella, every manifest
+      bin/build --preprint                     # non-anon arXiv-style render (real authors)
+      bin/build --final                        # camera-ready render (real authors, no preprint footer)
 
     Output goes to <paper>/.build/<stem>/<stem>.pdf and is copied to
     <paper>/<stem>.pdf on success (with prior PDF moved to <stem>.prior.pdf).

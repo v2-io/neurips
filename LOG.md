@@ -6,7 +6,26 @@ For active backlog see `MIGRATE-TODO.md` (restructure / per-paper / docs) and `P
 
 ---
 
-## 2026-05-05 — Migration-agent prep: cite-migration tool + lint rules + anchored equations
+## 2026-05-22 — Non-anonymous render flags (`--preprint`, `--final`) + author info hygiene
+
+Added two flags to `bin/build` so the umbrella pipeline can produce non-anonymous renders without hand-editing `common/neurips_2026.tex`:
+
+- `bin/build --preprint` — splices `[preprint]` into the package load (`\usepackage[preprint]{neurips_2026}`). Renders real authors from `meta.md`; adds NeurIPS's "Preprint. Work in progress." footer. Right choice for arXiv-style distribution or for review-but-not-yet-accepted PDFs that should not visually claim accepted status.
+- `bin/build --final` — splices `[final]`. Real authors, no preprint footer. NeurIPS reserves `[final]` for accepted camera-ready; only use it when that is true (or layer a clarifying notice on top — that's how the 2026-05-22 `~/Documents/submitted-papers/` non-anon rebuilds added a "SUBMITTED FOR REVIEW — DO NOT REDISTRIBUTE" overlay).
+- Both flags share the same splice point as the citation/hyperref `pre_sty_options` (line ~1130 of `bin/build`). Mutually exclusive; if both are set, `--final` wins, matching the sty's own precedence order at `neurips_2026.sty:61`.
+
+`\if@anonymous` in `neurips_2026.sty` handles author suppression at `\@maketitle` time, so real author info in `meta.md` is **safe** for default (blind) builds — the sty replaces `\@author` with "Anonymous Author(s) / Affiliation / Address / email" placeholder text regardless. This is why `meta.md` carrying real author info isn't a double-blind violation in default mode; it only renders when `--preprint` or `--final` is set.
+
+**Hygiene fix landed this cycle:** `01-tragedy-confident-agent/meta.md` carried placeholder anon-author info (`name: Anonymous Author / affiliation: Affiliation pending / email: anonymous@example.org`) — inconsistent with 02/03 which had real info, and unnecessary given the sty's anon-mode handling. Updated all three to Joseph's canonical v2.io form (`Independent Researcher, Vis Veritatis (v2.io), Lehi, USA / joseph.wecker@v2.io`).
+
+**When to use which flag** (decision rule for future agents):
+
+- Submitting to NeurIPS (or any double-blind venue): no flag. Default builds anonymously regardless of `meta.md`.
+- Distributing the work pre-decision (arXiv preprint, sharing with collaborators, audit copies): `--preprint`. Author info appears, preprint footer reminds readers it isn't accepted.
+- Camera-ready for an accepted paper: `--final`.
+- Building "submitted-but-not-yet-accepted" non-anon copies for trusted-distribution archives: `--final` plus an external review/redistribute notice (PDF overlay or banner stamp). The 2026-05-22 `~/Documents/submitted-papers/.tmp/stamp.tex` is one such overlay implementation.
+
+
 
 While migration agent #1 spins up, knocked through the most-blocking PIPELINE-TODO items so they land in cleaner working conditions:
 
