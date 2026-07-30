@@ -1,0 +1,4 @@
+> **Provenance of this file.** The spike agent was blocked by harness policy from writing `report.md` itself (the same block hit the information-bound spike the same evening). This document is the agent's own text, returned on request and persisted verbatim by the parent — no edits to substance, and the agent's inline `[first-hand]` / `[recon]` / `[unverified-by-either]` / `[composition, unverified]` markings are preserved deliberately. The agent asked specifically that the markings in §3c and §10 survive any future edit, because those are the two places a reader could mistake recon-provenance for first-hand. Please honor that.
+>
+> **Parent verification status:** the parent has independently verified only the App D quotation and the UCRL2/Azar attribution in §6a (see `PARENT-VERIFICATION.md` in this directory). Every other first-hand claim is the agent's read, not the parent's. The §3c composition is verified by *nobody* and is marked as such.
+

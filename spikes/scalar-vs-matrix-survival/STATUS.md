@@ -1,12 +1,14 @@
-# STATUS — synthesis report outstanding
+# STATUS — synthesis landed
 
-**2026-07-29 23:20.** The spike agent was killed by a server-side API error at the moment it began writing `report.md`, so **no synthesis exists yet** for this directory. Everything else survived and is committed:
+**2026-07-29, resolved.** `report.md` is present. The spike agent was killed by a server-side API error at the moment it began writing it; it was resumed, asked to synthesize from surviving artifacts **without re-running anything**, and returned the document as text, which the parent persisted verbatim.
 
-- `prior-art.md` + four neighborhood files (design/excitation, index policies, sensor scheduling, viability reduction) — ~144KB. `prior-art-sensor-scheduling.md` carries an **Appendix A** appended by a recon sub-agent with a full-text read of Marelli, Sui, Rohr & Fu (arXiv:1806.08098, *Automatica* 2019).
-- `num/exp1`–`exp7` with saved output for exp6 (lookahead) and exp7 (depth-2). The scripts run; their conclusions are **not yet synthesized or reviewed by the parent**.
+So: the numerics and prior art were produced before the interruption; the synthesis was written after it, from those artifacts. Nothing was re-run for the write-up. `report.md`'s own header states this, and §10 is marked *unfinished at interruption* rather than resolved.
 
-The agent has been resumed and asked to write the synthesis from the surviving artifacts without re-running anything. If it does not return, the prior-art files and numerics stand on their own and a future reader should treat any conclusion as **unsynthesized raw material**, not a finding.
+## Verification state — read before quoting
 
-## Do not quote these yet
+The parent has verified **nothing** in `report.md` first-hand beyond the existence of the files it cites. Two layers of second-hand sit inside it:
 
-Nothing in this directory has been parent-verified except the existence of the files. In particular the headline candidate from Appendix A — that the sharp boundedness condition for exogenous schedules is `K` blockwise scalar inequalities in which `E_π[I_o]` does not appear, making the paper's LMI sufficient but far from necessary — rests on a **sub-agent's** read of Marelli Theorem 14 and is marked `[V-full]` by that sub-agent, not by the parent. Verify against the PDF before it informs any claim. This project has already shipped one mis-stated rate taken on trust (see `02-unified-convergence-rl/LOG.md`, 2026-05-07).
+- Prior-art marks (`[VERIFIED — full text]`, `[VERIFIED-abstract]`, `[lead]`, `[RECALLED, UNVERIFIED]`) are a **recon sub-agent's**, preserved verbatim because the spike declined to translate marks it could not audit.
+- The Marelli / Theorem 14 material in §10 is second-hand *to the spike as well* — it arrived after the spike's last read of `prior-art.md`, so the spike states plainly it "cannot vouch for it at any rung." The parent has not opened arXiv:1806.08098 either. §10 is conditional throughout.
+
+The `[PROVED]` propositions in §3 and §4 are elementary and self-contained; those are checkable by reading. The `[TESTED]` results depend on `num/`, and §5.3's percentages carry a stated soundness caveat (the viability filter admits false positives, so denominators are approximate; the negative direction is sound).
