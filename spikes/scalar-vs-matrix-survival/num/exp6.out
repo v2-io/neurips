@@ -1,0 +1,43 @@
+(i) viable configs where ALL FOUR myopic scalars die: 6 found
+
+  --- all-myopic-fail instance ---
+  q = [1.96465 0.14544 0.     ]  R2 = 2.4282
+    v[0] = [0.07319 0.05231 0.     ]
+    v[1] = [0.4883 0.     0.    ]
+    v[2] = [12.08463  0.       0.     ]
+  P0 = [0.24282 0.24282 0.24282]  surviving cycle: [0, 2]  (verified 3000 steps)
+    lookahead depth 1: survives=False died_t=16
+    lookahead depth 2: survives=True  died_t=-
+    lookahead depth 3: survives=True  died_t=-
+    lookahead depth 4: survives=True  died_t=-
+    lookahead depth 6: survives=True  died_t=-
+
+  --- all-myopic-fail instance ---
+  q = [0.07314 2.37368 0.     ]  R2 = 3.22955
+    v[0] = [ 0.       0.47559 14.31241]
+    v[1] = [0.0209  0.04434 0.04561]
+    v[2] = [0.      1.62661 0.32941]
+  P0 = [0.32295 0.32295 0.32295]  surviving cycle: [1, 2]  (verified 3000 steps)
+    lookahead depth 1: survives=False died_t=57
+    lookahead depth 2: survives=True  died_t=-
+    lookahead depth 3: survives=True  died_t=-
+    lookahead depth 4: survives=True  died_t=-
+    lookahead depth 6: survives=True  died_t=-
+
+  --- all-myopic-fail instance ---
+  q = [0.13242 1.69857 0.     ]  R2 = 3.77165
+    v[0] = [0.05881 0.      4.35497]
+    v[1] = [0.      0.10942 0.     ]
+    v[2] = [0.      0.60777 1.45161]
+  P0 = [0.37716 0.37716 0.37716]  surviving cycle: [0, 2]  (verified 3000 steps)
+    lookahead depth 1: survives=False died_t=26
+    lookahead depth 2: survives=True  died_t=-
+    lookahead depth 3: survives=True  died_t=-
+    lookahead depth 4: survives=True  died_t=-
+    lookahead depth 6: survives=True  died_t=-
+
+(ii) failure rate of depth-d worst-case-lambda_max lookahead over viable configs
+   depth 1: 1/1200 fail (0.08%)
+   depth 2: 0/1200 fail (0.00%)
+   depth 3: 0/1200 fail (0.00%)
+   depth 4: 0/1200 fail (0.00%)
