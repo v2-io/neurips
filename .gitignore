@@ -15,3 +15,14 @@ __pycache__/
 refs/pdfs/*
 !refs/pdfs/.gitkeep
 refs/_emitted/
+
+# reviews/ — CONFIDENTIAL, deliberately untracked. Venue peer review
+# (reviewer text, reviewer IDs, AC meta-reviews) received during an active
+# review/discussion period. THIS REPOSITORY IS PUBLIC, as are all three paper
+# submodules — committing review content here would publish confidential
+# material and plausibly breach the venue Code of Conduct we are bound by for
+# the duration of the discussion period. Keep reviews on local disk (or a
+# private repo / ~/Documents) and reference them by path, never by commit.
+# Revisit only if a venue makes the reviews public itself (e.g. OpenReview
+# opening them post-decision), and then only for that venue's material.
+reviews/
