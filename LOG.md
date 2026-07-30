@@ -6,6 +6,22 @@ For active backlog see `MIGRATE-TODO.md` (restructure / per-paper / docs) and `P
 
 ---
 
+## 2026-07-29 — Artifact refresh after two idle months; peer reviews arrive; tracked-PDF convention written down
+
+First session in this workspace since 2026-05-22. All three papers went to NeurIPS 2026 in early May and the main peer-review feedback came back today (OpenReview PDFs downloaded to the umbrella root, plus the NeurIPS guidelines email saved). Reviews are **not yet triaged** — that's the next substantive cycle, and none of the work below touches paper content.
+
+**What the working tree was holding.** Every submodule had a dirty tree that turned out to be a single cause: the last build run in each was the 2026-05-22 `--preprint` / `--final` render, so the tracked `<stem>.pdf` (and 01's `<stem>.extracted.bib` pair) had flipped to *non-anonymous*. Rebuilt all four manifests (01 main + 01 review + 02 + 03) with the default flags and committed those instead.
+
+**Convention now stated explicitly, because it wasn't:** *the PDF/`extracted.bib` artifacts tracked in each paper repo are the **blind** build.* The 2026-05-22 entry documents what the flags do but never says which build the repo keeps, and the failure is silent and repeatable — you run `--preprint` for an external copy, the flag isn't sticky, the dirty tree looks like nothing important, and a later `git add -A` publishes de-anonymized PDFs to what are four **public** GitHub repos. Non-anon renders belong in an external distribution dir (`~/Documents/submitted-papers/` is the established one), not here. If you want a non-anon copy committed somewhere, give it a distinct manifest stem rather than overwriting the blind artifact.
+
+**The one substantive delta** in the rebuilds: reference titles now render with their source capitalization ("Dual Adaptive Model Predictive Control", "LMIs" rather than "lmis"), from the brace-protection pass on `refs/entries/`. Page counts and section progressions unchanged; page-budget check still OK at 9pp main text for all three.
+
+**Also:** a stray `bin/relata`-emitted `refs.bib` at `02-unified-convergence-rl/` root is now gitignored (generated artifact; `bin/build` already emits the tracked `.extracted.bib`). Comparing it against the tracked bib produced a small but directional finding for `PIPELINE-TODO §F7` — relata's metadata is *better* where the two disagree — recorded in that item.
+
+Also pushed: the three `meta.md` real-author commits from 2026-05-22 that had been sitting unpushed. No new exposure — real identity is already throughout the pushed public history of all three repos (`LOG.md`, `TODO.md`, 03's `meta.md`), and the repos live under the `v2-io` org by name.
+
+---
+
 ## 2026-05-22 — Non-anonymous render flags (`--preprint`, `--final`) + author info hygiene
 
 Added two flags to `bin/build` so the umbrella pipeline can produce non-anonymous renders without hand-editing `common/neurips_2026.tex`:
